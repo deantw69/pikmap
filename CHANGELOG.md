@@ -3,6 +3,12 @@
 本專案的所有重要變更都會記錄在此檔案。
 版本格式採用 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [Unreleased]
+
+### 變更 Changed
+
+- dev server 開放區網存取（`server.host: true`），同 Wi-Fi 的手機可用本機 IP 連入測試。
+
 ## [1.0.0] - 2026-06-02
 
 第一版。一個精簡的 OpenStreetMap 資料查詢工具，靈感來自 overpass-turbo，
