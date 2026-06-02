@@ -3,11 +3,18 @@
 本專案的所有重要變更都會記錄在此檔案。
 版本格式採用 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
-## [Unreleased]
+## [1.1.0] - 2026-06-02
+
+### 新增 Added
+
+- **GitHub Pages 自動部署**：push 到 `main` 由 GitHub Actions 自動 build 並部署到
+  https://deantw69.github.io/pikmap/ 。
+- **MIT LICENSE**。
 
 ### 變更 Changed
 
 - dev server 開放區網存取（`server.host: true`），同 Wi-Fi 的手機可用本機 IP 連入測試。
+- build 時 base 改為 `/pikmap/`（GitHub Pages 子路徑）；dev / preview 仍用根路徑。
 
 ## [1.0.0] - 2026-06-02
 

@@ -1,6 +1,10 @@
 # pikmap
 
-一個精簡的 OpenStreetMap 資料查詢工具：在編輯器寫 [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) 查詢，按 **Run** 後在地圖上看到結果。
+[![Deploy to GitHub Pages](https://github.com/deantw69/pikmap/actions/workflows/deploy.yml/badge.svg)](https://github.com/deantw69/pikmap/actions/workflows/deploy.yml)
+
+🔗 **線上版：https://deantw69.github.io/pikmap/**
+
+一個精簡的 OpenStreetMap 資料查詢工具：勾選想找的地點類型，按 **Run** 後在地圖上看到結果。地點類型對應 Pikmin Bloom 的 [Decor Pikmin](https://www.pikminwiki.com/Decor_Pikmin) 分類；查詢經 [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) 取得。
 
 靈感來自 [overpass-turbo](https://github.com/tyrasd/overpass-turbo)（MIT 授權），但以更小的相依重新實作為基礎骨架，方便客製。
 
