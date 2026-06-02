@@ -2,7 +2,7 @@
  * 進入點：串接 menu / map / overpass，綁定 Run 按鈕。
  */
 import "./style.css";
-import { initMap, showResult } from "./map";
+import { initMap, showResult, refreshSize } from "./map";
 import { initMenu, getSelectedFilters, getSelectedCategories } from "./menu";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
@@ -12,8 +12,16 @@ const categoryContainer = document.getElementById("category-container")!;
 const previewEl = document.getElementById("query-preview")!;
 const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
 const statusEl = document.getElementById("status")!;
+const menuToggle = document.getElementById("menu-toggle") as HTMLButtonElement;
 
 initMap(mapPane);
+
+// 收合 / 展開左側查詢選單；收合後讓地圖重算尺寸補上圖磚
+menuToggle.addEventListener("click", () => {
+  const collapsed = document.body.classList.toggle("menu-collapsed");
+  menuToggle.setAttribute("aria-expanded", String(!collapsed));
+  requestAnimationFrame(() => refreshSize());
+});
 
 function setStatus(msg: string, isError = false) {
   statusEl.textContent = msg;

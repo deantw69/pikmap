@@ -44,6 +44,11 @@ export function initMap(el: HTMLElement): L.Map {
   return map;
 }
 
+/** 版面改變後（例如收合選單）讓 Leaflet 重新計算尺寸並補上圖磚。 */
+export function refreshSize(): void {
+  map.invalidateSize();
+}
+
 /** 回傳目前視野的 Overpass bbox 字串：south,west,north,east。 */
 export function getBboxString(): string {
   const b = map.getBounds();

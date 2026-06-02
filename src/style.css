@@ -36,6 +36,21 @@ body,
   flex: 0 0 auto;
 }
 
+#menu-toggle {
+  background: none;
+  border: none;
+  color: var(--bar-fg);
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+#menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 #topbar .brand {
   font-size: 20px;
   font-weight: 700;
@@ -102,6 +117,11 @@ body,
 #map-pane {
   flex: 1 1 60%;
   min-width: 0;
+}
+
+/* 收合選單：隱藏查詢面板，讓地圖佔滿（手機小螢幕特別有用） */
+body.menu-collapsed #query-pane {
+  display: none;
 }
 
 /* 右下角顏色圖例（選 2 種以上才出現） */

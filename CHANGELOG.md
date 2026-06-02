@@ -3,6 +3,12 @@
 本專案的所有重要變更都會記錄在此檔案。
 版本格式採用 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [Unreleased]
+
+### 新增 Added
+
+- 頂部列加入選單收合 / 展開鈕（☰），收起後地圖佔滿畫面，手機小螢幕更好用。
+
 ## [1.1.0] - 2026-06-02
 
 ### 新增 Added
