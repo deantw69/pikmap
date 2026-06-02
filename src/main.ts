@@ -1,0 +1,67 @@
+/**
+ * 進入點：串接 menu / map / overpass，綁定 Run 按鈕。
+ */
+import "./style.css";
+import { initMap, showResult } from "./map";
+import { initMenu, getSelectedFilters, getSelectedCategories } from "./menu";
+import { runQuery, buildQuery } from "./overpass";
+import { MARKER_PALETTE } from "./config";
+
+const mapPane = document.getElementById("map-pane")!;
+const categoryContainer = document.getElementById("category-container")!;
+const previewEl = document.getElementById("query-preview")!;
+const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
+const statusEl = document.getElementById("status")!;
+
+initMap(mapPane);
+
+function setStatus(msg: string, isError = false) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle("error", isError);
+}
+
+/** 依目前勾選更新查詢預覽。 */
+function refreshPreview() {
+  const filters = getSelectedFilters();
+  previewEl.textContent = filters.length
+    ? buildQuery(filters)
+    : "（尚未選擇任何類型）";
+}
+
+initMenu(categoryContainer, refreshPreview);
+refreshPreview();
+
+async function onRun() {
+  const filters = getSelectedFilters();
+  if (!filters.length) {
+    setStatus("請至少勾選一個類型", true);
+    return;
+  }
+  // 依勾選順序給每個分類配一個顏色（選 2 種以上時 showResult 會據此上色）
+  const styled = getSelectedCategories().map((category, i) => ({
+    category,
+    color: MARKER_PALETTE[i % MARKER_PALETTE.length],
+  }));
+
+  runBtn.disabled = true;
+  setStatus("查詢中…");
+  try {
+    const geojson = await runQuery(buildQuery(filters));
+    const count = showResult(geojson, styled);
+    setStatus(count > 0 ? `完成：${count} 筆結果` : "完成：沒有符合的結果");
+  } catch (err) {
+    setStatus((err as Error).message, true);
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+runBtn.addEventListener("click", onRun);
+
+// Ctrl/Cmd + Enter 也可執行查詢
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    onRun();
+  }
+});

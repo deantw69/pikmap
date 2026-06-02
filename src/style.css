@@ -1,0 +1,265 @@
+/* ── pikmap 介面樣式（品牌/介面客製點）───────────────────────── */
+
+:root {
+  --brand: #2b7a4b;
+  --brand-dark: #1f5c38;
+  --bar-bg: #1d2b24;
+  --bar-fg: #f3f6f4;
+  --border: #d4dad6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 頂部列 ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  flex: 0 0 auto;
+}
+
+#topbar .brand {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--brand);
+  filter: brightness(1.6);
+}
+
+#topbar .tagline {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+#run-btn {
+  margin-left: auto;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#run-btn:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+#run-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+#status {
+  font-size: 13px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+#status.error {
+  color: #ff9b9b;
+}
+
+/* ── 工作區：左右分欄 ── */
+#workspace {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+#query-pane {
+  flex: 0 0 40%;
+  min-width: 280px;
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  background: #f7f9f8;
+  padding: 16px;
+}
+
+#map-pane {
+  flex: 1 1 60%;
+  min-width: 0;
+}
+
+/* 右下角顏色圖例（選 2 種以上才出現） */
+.legend {
+  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* 右上角 zoom level 顯示（白底深字，與圖例一致） */
+.zoom-display {
+  background: rgba(255, 255, 255, 0.92);
+  color: #333;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  user-select: none;
+}
+
+/* ── 查詢面板 ── */
+.panel-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--brand-dark);
+}
+
+.panel-hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #6b756f;
+}
+
+.menu-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--brand-dark);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.group-title {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4a554e;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.group-title:first-of-type {
+  margin-top: 4px;
+}
+
+.category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  user-select: none;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.category-item:hover {
+  border-color: var(--brand);
+}
+
+.category-item.checked {
+  border-color: var(--brand);
+  background: #e8f3ec;
+}
+
+.category-item input {
+  accent-color: var(--brand);
+  width: 16px;
+  height: 16px;
+}
+
+/* ── 查詢預覽 ── */
+#preview-box {
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+#preview-box summary {
+  cursor: pointer;
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
+#query-preview {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: #1d2b24;
+  color: #d7ecdf;
+  border-radius: 8px;
+  overflow: auto;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── 窄螢幕改為上下排列 ── */
+@media (max-width: 760px) {
+  #workspace {
+    flex-direction: column;
+  }
+  #query-pane {
+    flex: 0 0 45%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  #topbar .tagline {
+    display: none;
+  }
+}
