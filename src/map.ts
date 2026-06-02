@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import type { FeatureCollection, Feature } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
 import { initZoomDisplay, initS2Grid } from "./grid";
+import { initSearch } from "./search";
 import { load, save } from "./storage";
 
 interface SavedView {
@@ -32,6 +33,7 @@ export function initMap(el: HTMLElement): L.Map {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 
+  initSearch(map); // 左上角地址搜尋框
   initZoomDisplay(map); // 右上角 zoom level
   initS2Grid(map); // zoom ≥ 17 顯示 S2 網格
 

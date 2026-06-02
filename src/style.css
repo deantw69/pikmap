@@ -124,6 +124,94 @@ body.menu-collapsed #query-pane {
   display: none;
 }
 
+/* 地圖左上角地址搜尋框（放在 +/- 縮放鈕的右邊）
+   用 .map-search.leaflet-control 提高優先度，蓋過 Leaflet 預設的 float 堆疊 */
+.map-search.leaflet-control {
+  position: absolute;
+  top: 10px;
+  left: 48px;
+  margin: 0;
+  float: none;
+}
+
+.map-search-row {
+  display: flex;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.map-search-input {
+  border: none;
+  outline: none;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 200px;
+  max-width: 50vw;
+}
+
+.map-search-input.error {
+  background: #ffe5e5;
+}
+
+.map-search-btn {
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.map-search-btn:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.map-search-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* 搜尋建議下拉選單 */
+.map-search-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.map-search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.map-search-item:hover,
+.map-search-item.active {
+  background: #eef6ff;
+}
+
+.map-search-item-head {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.map-search-item-sub {
+  font-size: 12px;
+  color: #777;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 右下角顏色圖例（選 2 種以上才出現） */
 .legend {
   background: rgba(255, 255, 255, 0.92);
