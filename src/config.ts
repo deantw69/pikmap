@@ -64,6 +64,11 @@ export interface QueryCategory {
    * 每個字串內可串多個方括號做 AND，例如 ["amenity"="restaurant"]["cuisine"="sushi"]。
    */
   filters: string[];
+  /**
+   * 可選：把此分類的結果限制在某個國家／地區內（ISO 3166-1 代碼，例如 "JP"）。
+   * 設定後查詢會加上 (area.<iso>) 與 bbox 取交集，落在該地區之外的結果不會回傳。
+   */
+  areaScope?: string;
 }
 
 // 完全對應 https://www.pikminwiki.com/Decor_Pikmin 頁面上「直接寫出的 OSM 標籤」。
@@ -108,7 +113,7 @@ export const CATEGORIES: QueryCategory[] = [
   { id: "stadium", label: "體育場", emoji: "🏟️", group: "休閒文化", filters: ['["leisure"="stadium"]'] }, // Stadium
   { id: "library", label: "圖書館 / 書店", emoji: "📚", group: "休閒文化", filters: ['["amenity"="library"]', '["shop"="books"]'] }, // Library & Bookstore
   { id: "university", label: "大學 / 學院", emoji: "🎓", group: "休閒文化", filters: ['["amenity"="university"]', '["amenity"="college"]'] }, // University & College
-  { id: "worship", label: "寺廟 / 神社", emoji: "⛩️", group: "休閒文化", filters: ['["amenity"="place_of_worship"]'] }, // Shrines and Temples
+  { id: "worship", label: "寺廟 / 神社", emoji: "⛩️", group: "休閒文化", filters: ['["amenity"="place_of_worship"]'], areaScope: "JP" }, // Shrines and Temples（僅限日本境內）
 
   // ── 生活機能 ──
   { id: "pharmacy", label: "藥局", emoji: "💊", group: "生活機能", filters: ['["amenity"="pharmacy"]'] }, // Pharmacy

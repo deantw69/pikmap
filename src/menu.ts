@@ -89,8 +89,3 @@ export function initMenu(parent: HTMLElement, onChange: () => void): void {
 export function getSelectedCategories(): QueryCategory[] {
   return CATEGORIES.filter((c) => selected.has(c.id));
 }
-
-/** 回傳目前勾選類型對應的過濾條件（保持 CATEGORIES 的順序；多標籤類型會展開成多筆）。 */
-export function getSelectedFilters(): string[] {
-  return getSelectedCategories().flatMap((c) => c.filters);
-}

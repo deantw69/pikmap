@@ -3,7 +3,7 @@
  */
 import "./style.css";
 import { initMap, showResult, refreshSize } from "./map";
-import { initMenu, getSelectedFilters, getSelectedCategories } from "./menu";
+import { initMenu, getSelectedCategories } from "./menu";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
 
@@ -30,9 +30,9 @@ function setStatus(msg: string, isError = false) {
 
 /** 依目前勾選更新查詢預覽。 */
 function refreshPreview() {
-  const filters = getSelectedFilters();
-  previewEl.textContent = filters.length
-    ? buildQuery(filters)
+  const categories = getSelectedCategories();
+  previewEl.textContent = categories.length
+    ? buildQuery(categories)
     : "（尚未選擇任何類型）";
 }
 
@@ -40,13 +40,13 @@ initMenu(categoryContainer, refreshPreview);
 refreshPreview();
 
 async function onRun() {
-  const filters = getSelectedFilters();
-  if (!filters.length) {
+  const categories = getSelectedCategories();
+  if (!categories.length) {
     setStatus("請至少勾選一個類型", true);
     return;
   }
   // 依勾選順序給每個分類配一個顏色（選 2 種以上時 showResult 會據此上色）
-  const styled = getSelectedCategories().map((category, i) => ({
+  const styled = categories.map((category, i) => ({
     category,
     color: MARKER_PALETTE[i % MARKER_PALETTE.length],
   }));
@@ -54,7 +54,7 @@ async function onRun() {
   runBtn.disabled = true;
   setStatus("查詢中…");
   try {
-    const geojson = await runQuery(buildQuery(filters));
+    const geojson = await runQuery(buildQuery(categories));
     const count = showResult(geojson, styled);
     setStatus(count > 0 ? `完成：${count} 筆結果` : "完成：沒有符合的結果");
   } catch (err) {

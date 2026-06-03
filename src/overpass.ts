@@ -5,27 +5,50 @@
  */
 import osmtogeojson from "osmtogeojson";
 import type { FeatureCollection } from "geojson";
-import { OVERPASS_ENDPOINT, QUERY_TIMEOUT_MS } from "./config";
+import { OVERPASS_ENDPOINT, QUERY_TIMEOUT_MS, type QueryCategory } from "./config";
 import { getBboxString } from "./map";
 
 /**
- * 由勾選的過濾條件組出 Overpass 查詢（union 多個類型）。
- * 例如 filters = ['["leisure"="park"]', '["tourism"="zoo"]'] 會產生：
+ * 由勾選的分類組出 Overpass 查詢（union 多個類型）。
+ * 一般分類只受 {{bbox}} 限制；若分類設了 areaScope（ISO 3166-1 代碼），
+ * 會額外與該國家／地區的範圍取交集，落在範圍外的結果不會回傳。
+ *
+ * 例如 park + worship(areaScope:"JP") 會產生：
  *   [out:json][timeout:25];
+ *   area["ISO3166-1"="JP"]->.area_jp;
  *   // gather results
  *   (
  *     nwr["leisure"="park"]({{bbox}});
- *     nwr["tourism"="zoo"]({{bbox}});
+ *     nwr["amenity"="place_of_worship"](area.area_jp)({{bbox}});
  *   );
  *   // print results
  *   out geom;
  */
-export function buildQuery(filters: string[]): string {
-  const body = filters.map((f) => `  nwr${f}({{bbox}});`).join("\n");
+export function buildQuery(categories: QueryCategory[]): string {
+  // 收集所有用到的地區範圍，去重後在開頭宣告為具名集合
+  const scopes = new Map<string, string>(); // ISO 代碼 -> set 名稱
+  const lines: string[] = [];
+
+  for (const cat of categories) {
+    let scopeSuffix = "";
+    if (cat.areaScope) {
+      const setName = `area_${cat.areaScope.toLowerCase()}`;
+      scopes.set(cat.areaScope, setName);
+      scopeSuffix = `(area.${setName})`;
+    }
+    for (const f of cat.filters) {
+      lines.push(`  nwr${f}${scopeSuffix}({{bbox}});`);
+    }
+  }
+
+  const areaDecls = [...scopes.entries()]
+    .map(([iso, set]) => `area["ISO3166-1"="${iso}"]->.${set};`)
+    .join("\n");
+
   return `[out:json][timeout:25];
-// gather results
+${areaDecls ? areaDecls + "\n" : ""}// gather results
 (
-${body}
+${lines.join("\n")}
 );
 // print results
 out geom;`;
