@@ -127,5 +127,5 @@ export const CATEGORIES: QueryCategory[] = [
   { id: "bridge", label: "橋樑", emoji: "🌉", group: "交通", filters: ['["bridge"="yes"]'] }, // Bridge
 ];
 
-/** 預設勾選的分類 id（對應使用者範例：公園 + 動物園） */
-export const DEFAULT_SELECTED = ["park", "zoo"];
+/** 預設勾選的分類 id */
+export const DEFAULT_SELECTED = [];
