@@ -112,7 +112,7 @@ export const CATEGORIES: QueryCategory[] = [
 
   // ── 生活機能 ──
   { id: "pharmacy", label: "藥局", emoji: "💊", group: "生活機能", filters: ['["amenity"="pharmacy"]'] }, // Pharmacy
-  { id: "post_office", label: "郵局", emoji: "📯", group: "生活機能", filters: ['["amenity"="post_office"]'] }, // Post Office
+  { id: "post_office", label: "郵局", emoji: "✉️", group: "生活機能", filters: ['["amenity"="post_office"]'] }, // Post Office
   { id: "hotel", label: "飯店", emoji: "🏨", group: "生活機能", filters: ['["tourism"="hotel"]'] }, // Hotel
 
   // ── 交通 ──
