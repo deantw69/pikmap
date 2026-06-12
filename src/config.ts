@@ -97,6 +97,7 @@ export const CATEGORIES: QueryCategory[] = [
   { id: "appliance", label: "電器行", emoji: "🔌", group: "購物", filters: ['["shop"="appliance"]', '["shop"="computer"]', '["shop"="electronics"]'] }, // Appliances Store
   { id: "diy", label: "DIY / 五金", emoji: "🔧", group: "購物", filters: ['["shop"="doityourself"]', '["shop"="hardware"]'] }, // DIY Store
   { id: "laundry", label: "洗衣 / 乾洗店", emoji: "🧺", group: "購物", filters: ['["shop"="laundry"]', '["shop"="dry_cleaning"]'] }, // Laundromats & Dry Cleaners
+  { id: "stationery", label: "文具店", emoji: "✏️", group: "購物", filters: ['["shop"="stationery"]'] }, // Stationery Store
 
   // ── 自然 ──
   { id: "park", label: "公園", emoji: "🌳", group: "自然", filters: ['["leisure"="park"]'] }, // Park
