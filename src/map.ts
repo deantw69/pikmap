@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import type { FeatureCollection, Feature } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
 import { initZoomDisplay, initS2Grid } from "./grid";
+import { initRangeCircle } from "./circle";
 import { initSearch } from "./search";
 import { load, save } from "./storage";
 
@@ -35,6 +36,7 @@ export function initMap(el: HTMLElement): L.Map {
 
   initSearch(map); // 左上角地址搜尋框
   initZoomDisplay(map); // 右上角 zoom level
+  initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
   initS2Grid(map); // zoom ≥ 17 顯示 S2 網格
 
   // 每次平移／縮放後記住目前視野
