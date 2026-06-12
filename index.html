@@ -11,7 +11,7 @@
         <button id="menu-toggle" type="button" aria-label="收合 / 展開選單" aria-expanded="true">☰</button>
         <span class="brand">pikmap</span>
         <span class="tagline">OpenStreetMap data query</span>
-        <button id="run-btn" type="button">Run ▶</button>
+        <button id="run-btn" type="button">開始查詢 ▶</button>
         <span id="status"></span>
       </header>
       <main id="workspace">
@@ -24,6 +24,8 @@
             <pre id="query-preview"></pre>
           </details>
         </section>
+        <div id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="拖曳調整選單寬度"></div>
+        <button id="pane-arrow" type="button" aria-label="收合 / 展開選單" aria-expanded="true">◀</button>
         <section id="map-pane"></section>
       </main>
     </div>

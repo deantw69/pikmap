@@ -6,6 +6,7 @@ import { initMap, showResult, refreshSize } from "./map";
 import { initMenu, getSelectedCategories } from "./menu";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
+import { load, save } from "./storage";
 
 const mapPane = document.getElementById("map-pane")!;
 const categoryContainer = document.getElementById("category-container")!;
@@ -13,15 +14,64 @@ const previewEl = document.getElementById("query-preview")!;
 const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
 const statusEl = document.getElementById("status")!;
 const menuToggle = document.getElementById("menu-toggle") as HTMLButtonElement;
+const paneArrow = document.getElementById("pane-arrow") as HTMLButtonElement;
+const paneResizer = document.getElementById("pane-resizer")!;
+const queryPane = document.getElementById("query-pane")!;
 
 initMap(mapPane);
 
-// 收合 / 展開左側查詢選單；收合後讓地圖重算尺寸補上圖磚
-menuToggle.addEventListener("click", () => {
-  const collapsed = document.body.classList.toggle("menu-collapsed");
+// 還原上次調好的選單寬度（桌機）；手機為懸浮固定寬度，不受此影響
+const savedWidth = load<number | null>("menuWidth", null);
+if (typeof savedWidth === "number") {
+  document.body.style.setProperty("--menu-width", savedWidth + "px");
+}
+
+// 收合 / 展開查詢選單（☰ 與手機側邊箭頭共用）；收合後讓地圖重算尺寸補上圖磚
+function setMenuCollapsed(collapsed: boolean) {
+  document.body.classList.toggle("menu-collapsed", collapsed);
   menuToggle.setAttribute("aria-expanded", String(!collapsed));
+  paneArrow.setAttribute("aria-expanded", String(!collapsed));
+  paneArrow.textContent = collapsed ? "▶" : "◀";
   requestAnimationFrame(() => refreshSize());
-});
+}
+const toggleMenu = () =>
+  setMenuCollapsed(!document.body.classList.contains("menu-collapsed"));
+menuToggle.addEventListener("click", toggleMenu);
+paneArrow.addEventListener("click", toggleMenu);
+
+// 桌機：拖曳分隔線調整選單寬度，放開後記住到 localStorage
+initPaneResize();
+
+function initPaneResize() {
+  const MIN = 280;
+  let dragging = false;
+
+  const onMove = (e: PointerEvent) => {
+    if (!dragging) return;
+    const ws = queryPane.parentElement!.getBoundingClientRect();
+    const w = Math.max(MIN, Math.min(e.clientX - ws.left, ws.width * 0.8));
+    document.body.style.setProperty("--menu-width", w + "px");
+    refreshSize();
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    paneResizer.classList.remove("dragging");
+    document.body.classList.remove("resizing");
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    save("menuWidth", Math.round(queryPane.getBoundingClientRect().width));
+    refreshSize();
+  };
+  paneResizer.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    paneResizer.classList.add("dragging");
+    document.body.classList.add("resizing");
+    e.preventDefault();
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  });
+}
 
 function setStatus(msg: string, isError = false) {
   statusEl.textContent = msg;

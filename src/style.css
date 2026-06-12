@@ -103,11 +103,14 @@ body,
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
+  position: relative; /* 手機懸浮選單的定位基準 */
 }
 
 #query-pane {
-  flex: 0 0 40%;
+  flex: 0 0 auto;
+  width: var(--menu-width, 40%); /* 桌機寬度可拖曳調整，存在 --menu-width */
   min-width: 280px;
+  max-width: 80%;
   border-right: 1px solid var(--border);
   overflow: auto;
   background: #f7f9f8;
@@ -115,12 +118,54 @@ body,
 }
 
 #map-pane {
-  flex: 1 1 60%;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-/* 收合選單：隱藏查詢面板，讓地圖佔滿（手機小螢幕特別有用） */
+/* 桌機：選單與地圖之間的拖曳分隔線 */
+#pane-resizer {
+  flex: 0 0 6px;
+  position: relative;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 5;
+}
+
+#pane-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 2px;
+  transition: background 0.12s;
+}
+
+#pane-resizer:hover::before,
+#pane-resizer.dragging::before {
+  background: var(--brand);
+  opacity: 0.6;
+}
+
+/* 拖曳調寬時：統一游標、停掉文字選取與地圖的滑鼠事件 */
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing #map-pane {
+  pointer-events: none;
+}
+
+/* 手機側邊收合箭頭預設隱藏（只在窄螢幕出現） */
+#pane-arrow {
+  display: none;
+}
+
+/* 收合選單：隱藏查詢面板，讓地圖佔滿 */
 body.menu-collapsed #query-pane {
+  display: none;
+}
+
+body.menu-collapsed #pane-resizer {
   display: none;
 }
 
@@ -422,17 +467,65 @@ body.menu-collapsed #query-pane {
   word-break: break-all;
 }
 
-/* ── 窄螢幕改為上下排列 ── */
+/* ── 窄螢幕：選單改為懸浮在地圖上、用側邊箭頭收起 ── */
 @media (max-width: 760px) {
-  #workspace {
-    flex-direction: column;
-  }
-  #query-pane {
-    flex: 0 0 45%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
   #topbar .tagline {
     display: none;
+  }
+
+  /* 選單懸浮在地圖左側，可整片滑進／滑出 */
+  #query-pane {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(85vw, 360px);
+    max-width: none;
+    z-index: 1200;
+    box-shadow: 2px 0 14px rgba(0, 0, 0, 0.28);
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+  }
+
+  #map-pane {
+    flex: 1 1 100%;
+  }
+
+  #pane-resizer {
+    display: none;
+  }
+
+  /* 收合時整片選單滑出畫面左側，display 不關掉才有滑動動畫 */
+  body.menu-collapsed #query-pane {
+    display: block;
+    transform: translateX(-100%);
+  }
+
+  /* 側邊收合箭頭：貼在選單右緣，跟著選單一起滑動 */
+  #pane-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: min(85vw, 360px);
+    width: 30px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    background: var(--brand);
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1200;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.28);
+    transform: translateY(-50%);
+    transition: transform 0.25s ease;
+  }
+
+  body.menu-collapsed #pane-arrow {
+    transform: translate(calc(-1 * min(85vw, 360px)), -50%);
   }
 }
