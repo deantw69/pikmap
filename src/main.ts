@@ -4,6 +4,8 @@
 import "./style.css";
 import { initMap, showResult, refreshSize } from "./map";
 import { initMenu, getSelectedCategories } from "./menu";
+import { initLocate } from "./location";
+import { initResults, renderResults, refreshResults } from "./results";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
 import { load, save } from "./storage";
@@ -17,8 +19,11 @@ const menuToggle = document.getElementById("menu-toggle") as HTMLButtonElement;
 const paneArrow = document.getElementById("pane-arrow") as HTMLButtonElement;
 const paneResizer = document.getElementById("pane-resizer")!;
 const queryPane = document.getElementById("query-pane")!;
+const resultsList = document.getElementById("results-list")!;
 
-initMap(mapPane);
+const map = initMap(mapPane);
+initLocate(map, refreshResults); // 左上角定位鈕；定位更新後重排結果距離
+initResults(resultsList);
 
 // 還原上次調好的選單寬度（桌機）；手機為懸浮固定寬度，不受此影響
 const savedWidth = load<number | null>("menuWidth", null);
@@ -105,8 +110,9 @@ async function onRun() {
   setStatus("查詢中…");
   try {
     const geojson = await runQuery(buildQuery(categories));
-    const count = showResult(geojson, styled);
-    setStatus(count > 0 ? `完成：${count} 筆結果` : "完成：沒有符合的結果");
+    const data = showResult(geojson, styled);
+    renderResults(data);
+    setStatus(data.count > 0 ? `完成：${data.count} 筆結果` : "完成：沒有符合的結果");
   } catch (err) {
     setStatus((err as Error).message, true);
   } finally {

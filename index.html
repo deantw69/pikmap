@@ -17,12 +17,16 @@
       <main id="workspace">
         <section id="query-pane">
           <h2 class="panel-title">選擇要查詢的地點類型</h2>
-          <p class="panel-hint">可複選；按 Run 會在目前地圖視野內搜尋。</p>
+          <p class="panel-hint">可複選；按「開始查詢」會在目前地圖視野內搜尋。</p>
           <div id="category-container"></div>
           <details id="preview-box">
             <summary>查詢預覽</summary>
             <pre id="query-preview"></pre>
           </details>
+          <section id="results-pane">
+            <h2 class="panel-title">查詢結果</h2>
+            <div id="results-list"></div>
+          </section>
         </section>
         <div id="pane-resizer" role="separator" aria-orientation="vertical" aria-label="拖曳調整選單寬度"></div>
         <button id="pane-arrow" type="button" aria-label="收合 / 展開選單" aria-expanded="true">◀</button>

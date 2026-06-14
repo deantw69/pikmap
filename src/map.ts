@@ -4,7 +4,7 @@
  */
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { FeatureCollection, Feature } from "geojson";
+import type { FeatureCollection } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
 import { initZoomDisplay, initS2Grid } from "./grid";
 import { initRangeCircle } from "./circle";
@@ -61,11 +61,55 @@ export function getBboxString(): string {
     .join(",");
 }
 
+/** 目前地圖中心（沒有定位時當作距離原點）。 */
+export function getMapCenter(): L.LatLng {
+  return map.getCenter();
+}
+
+/** 兩點間距離（公尺）。 */
+export function distanceMeters(a: L.LatLngExpression, b: L.LatLngExpression): number {
+  return map.distance(a, b);
+}
+
+/** 移動到某筆結果並打開它的彈窗（給結果清單點擊用）。 */
+export function focusResult(index: number): void {
+  const layer = resultLayersByIndex[index];
+  if (!layer) return;
+  const ll =
+    "getLatLng" in layer && typeof (layer as L.Marker).getLatLng === "function"
+      ? (layer as L.Marker).getLatLng()
+      : (layer as L.Polygon).getBounds().getCenter();
+  map.setView(ll, Math.max(map.getZoom(), 17));
+  (layer as L.Layer & { openPopup?: () => void }).openPopup?.();
+}
+
 /** 一個被選取、且已配好顏色的分類 */
 export interface StyledCategory {
   category: QueryCategory;
   color: string;
 }
+
+/** 單筆結果（給結果清單顯示／排序用） */
+export interface ResultItem {
+  /** 對應 resultLayersByIndex 的索引，點擊清單時用來聚焦 */
+  index: number;
+  name: string;
+  emoji: string;
+  label: string;
+  color: string;
+  latlng: [number, number];
+}
+
+/** 一次查詢的結果摘要 */
+export interface ShowResultData {
+  count: number;
+  /** 各選取分類在結果中的數量 */
+  perCategory: { label: string; emoji: string; color: string; count: number }[];
+  items: ResultItem[];
+}
+
+/** 結果圖層依索引存放，供 focusResult 點擊聚焦 */
+let resultLayersByIndex: L.Layer[] = [];
 
 /** 已解析條件的分類（內部用） */
 interface ParsedCategory {
@@ -100,11 +144,12 @@ function featureMatches(props: Record<string, unknown>, parsed: ParsedCategory):
  * 清掉舊的結果，畫上新的 GeoJSON 並縮放到結果範圍。回傳 feature 數量。
  * 傳入 styled 時：≥2 個分類會依 tags 比對上色並顯示圖例；<2 個則統一用預設色。
  */
-export function showResult(geojson: FeatureCollection, styled: StyledCategory[] = []): number {
+export function showResult(geojson: FeatureCollection, styled: StyledCategory[] = []): ShowResultData {
   if (resultLayer) {
     resultLayer.remove();
     resultLayer = null;
   }
+  resultLayersByIndex = [];
 
   const useColors = styled.length >= 2;
   const parsed: ParsedCategory[] = styled.map((s) => ({
@@ -112,19 +157,27 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     filters: s.category.filters.map(parseFilter),
   }));
 
-  const colorFor = (feature?: Feature): string => {
-    if (!useColors || !feature) return MARKER_COLOR;
-    const props = (feature.properties ?? {}) as Record<string, unknown>;
-    for (const cat of parsed) {
-      if (featureMatches(props, cat)) return cat.color;
+  // 找出某 feature 屬於哪個選取分類（回傳 styled 索引，找不到回 -1）。
+  // 只選一種分類時，回傳的結果視為全屬於該分類。
+  const categoryIndex = (props: Record<string, unknown>): number => {
+    for (let i = 0; i < parsed.length; i++) {
+      if (featureMatches(props, parsed[i])) return i;
     }
-    return MARKER_COLOR;
+    return styled.length === 1 ? 0 : -1;
   };
 
+  const counts = styled.map(() => 0);
+  const items: ResultItem[] = [];
+
   resultLayer = L.geoJSON(geojson, {
-    style: (feature) => ({ color: colorFor(feature), weight: 2, fillOpacity: 0.2 }),
+    style: (feature) => {
+      const idx = feature ? categoryIndex((feature.properties ?? {}) as Record<string, unknown>) : -1;
+      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
+      return { color: c, weight: 2, fillOpacity: 0.2 };
+    },
     pointToLayer: (feature, latlng) => {
-      const c = colorFor(feature);
+      const idx = categoryIndex((feature.properties ?? {}) as Record<string, unknown>);
+      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
       return L.circleMarker(latlng, {
         radius: 10,
         color: c,
@@ -134,43 +187,85 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
       });
     },
     onEachFeature: (feature, layer) => {
-      const tags = feature.properties ?? {};
+      const tags = (feature.properties ?? {}) as Record<string, unknown>;
       const rows = Object.entries(tags)
         .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
         .join("");
       if (rows) layer.bindPopup(`<table class="tags">${rows}</table>`);
+
+      const idx = categoryIndex(tags);
+      if (idx >= 0) counts[idx]++;
+
+      const index = resultLayersByIndex.length;
+      resultLayersByIndex.push(layer);
+
+      // 結果代表座標：點用本身，面／線用範圍中心
+      const center =
+        "getLatLng" in layer && typeof (layer as L.Marker).getLatLng === "function"
+          ? (layer as L.Marker).getLatLng()
+          : (layer as L.Polygon).getBounds().getCenter();
+      const cat = idx >= 0 ? styled[idx].category : null;
+      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
+      items.push({
+        index,
+        name: featureName(tags) || cat?.label || "(未命名)",
+        emoji: cat?.emoji ?? "📍",
+        label: cat?.label ?? "其他",
+        color: c,
+        latlng: [center.lat, center.lng],
+      });
     },
   }).addTo(map);
 
-  updateLegend(useColors ? styled : []);
+  updateLegend(useColors ? styled : [], counts);
 
   const count = geojson.features?.length ?? 0;
   if (count > 0) {
     const bounds = resultLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
   }
-  return count;
+
+  const perCategory = styled.map((s, i) => ({
+    label: s.category.label,
+    emoji: s.category.emoji,
+    color: s.color,
+    count: counts[i],
+  }));
+  return { count, perCategory, items };
+}
+
+/** 從 OSM tags 取一個可讀名稱。 */
+function featureName(tags: Record<string, unknown>): string {
+  for (const k of ["name:zh", "name:zh-Hant", "name", "name:en", "brand"]) {
+    const v = tags[k];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return "";
 }
 
 let legend: L.Control | null = null;
 
-/** 顯示／更新顏色圖例；傳空陣列則移除。 */
-function updateLegend(styled: StyledCategory[]): void {
+/** 顯示／更新顏色圖例（含各類數量）；只列出數量 > 0 的分類，沒有則移除。 */
+function updateLegend(styled: StyledCategory[], counts: number[] = []): void {
   if (legend) {
     legend.remove();
     legend = null;
   }
-  if (styled.length === 0) return;
+
+  const rows = styled
+    .map((s, i) => ({ s, n: counts[i] ?? 0 }))
+    .filter((r) => r.n > 0);
+  if (rows.length === 0) return;
 
   legend = new L.Control({ position: "bottomright" });
   legend.onAdd = () => {
     const div = L.DomUtil.create("div", "legend");
-    div.innerHTML = styled
+    div.innerHTML = rows
       .map(
-        (s) =>
+        ({ s, n }) =>
           `<div class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${escapeHtml(
             `${s.category.emoji} ${s.category.label}`,
-          )}</div>`,
+          )}<span class="legend-count">${n}</span></div>`,
       )
       .join("");
     return div;
