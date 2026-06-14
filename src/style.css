@@ -377,7 +377,20 @@ body.menu-collapsed #pane-resizer {
 .menu-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 14px;
   margin-bottom: 8px;
+}
+
+.toggle-btn.active {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.menu-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b756f;
 }
 
 .link-btn {
@@ -465,6 +478,152 @@ body.menu-collapsed #pane-resizer {
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* 右上角定位按鈕（排在雷達範圍鈕下方） */
+.locate-btn {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a73e8;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.locate-btn:hover {
+  background: #eef4ff;
+}
+
+.locate-btn.loading {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.locate-btn.error {
+  background: #ffe5e5;
+}
+
+/* 使用者目前位置的藍點 */
+.user-dot {
+  background: #1a73e8;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.4);
+}
+
+/* 圖例的各類數量 */
+.legend-count {
+  margin-left: 6px;
+  font-weight: 700;
+  color: #555;
+}
+
+/* 「已擁有」星號與收集追蹤 */
+.own-star {
+  margin-left: auto;
+  padding: 0 0 0 4px;
+  border: none;
+  background: none;
+  color: #e0a700;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.own-star[aria-pressed="false"] {
+  color: #c2c8c4;
+}
+
+.category-item.owned {
+  opacity: 0.65;
+}
+
+.hide-owned .category-item.owned {
+  display: none;
+}
+
+/* ── 查詢結果清單 ── */
+#results-pane {
+  margin-top: 18px;
+}
+
+#results-pane .panel-title {
+  font-size: 15px;
+}
+
+.results-empty,
+.results-note {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #6b756f;
+}
+
+.results-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.results-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.results-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.results-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.results-item:hover {
+  border-color: var(--brand);
+  background: #f3f9f5;
+}
+
+.results-swatch {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.results-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.results-dist {
+  flex: 0 0 auto;
+  color: #6b756f;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── 窄螢幕：選單改為懸浮在地圖上、用側邊箭頭收起 ── */
