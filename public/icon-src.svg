@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#2b7a4b"/>
+  <!-- 定位針 -->
+  <path d="M256 104c-68 0-120 52-120 120 0 88 120 192 120 192s120-104 120-192c0-68-52-120-120-120z" fill="#ffffff"/>
+  <!-- 花瓣（5 片）+ 花心，呼應 Pikmin Bloom -->
+  <g fill="#ff5d8f">
+    <circle cx="256" cy="168" r="22"/>
+    <circle cx="301" cy="200" r="22"/>
+    <circle cx="284" cy="252" r="22"/>
+    <circle cx="228" cy="252" r="22"/>
+    <circle cx="211" cy="200" r="22"/>
+  </g>
+  <circle cx="256" cy="212" r="20" fill="#ffd23f"/>
+</svg>
