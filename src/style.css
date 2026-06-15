@@ -269,6 +269,35 @@ body.menu-collapsed #pane-resizer {
   overflow: auto;
 }
 
+/* 圖例收合：點標題列收起／展開 */
+.legend-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: #333;
+  cursor: pointer;
+}
+
+.legend-body {
+  margin-top: 6px;
+}
+
+.legend.collapsed .legend-body {
+  display: none;
+}
+
+.legend-caret {
+  font-size: 11px;
+  color: #777;
+}
+
 .legend-item {
   display: flex;
   align-items: center;
@@ -353,12 +382,23 @@ body.menu-collapsed #pane-resizer {
 }
 
 /* 範圍圓中心的拖曳把手 */
+/* 範圍圓把手：30px 透明外框當觸控範圍，內含 18px 可見圓點 */
 .leaflet-div-icon.range-handle {
+  background: transparent;
+  border: none;
+  cursor: move;
+  touch-action: none; /* 觸控拖曳時不要被頁面捲動攔截 */
+}
+
+.range-dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 6px;
   background: #fff;
   border: 3px solid var(--brand);
   border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  cursor: move;
 }
 
 /* ── 查詢面板 ── */

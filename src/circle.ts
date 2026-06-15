@@ -46,13 +46,16 @@ export function initRangeCircle(map: L.Map): void {
       interactive: false,
     }).addTo(map);
 
-    // 用 divIcon 當把手，免去 Leaflet 預設圖示在打包環境下的圖片路徑問題
+    // 用 divIcon 當把手，免去 Leaflet 預設圖示在打包環境下的圖片路徑問題。
+    // 外框 30px 當觸控範圍（透明），內含 18px 的可見圓點，較好拖曳。
     const icon = L.divIcon({
       className: "range-handle",
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      html: `<span class="range-dot"></span>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
     });
-    handle = L.marker(center, { icon, draggable: true, autoPan: true }).addTo(map);
+    // zIndexOffset 拉高，確保把手在結果標記之上、不會被蓋住
+    handle = L.marker(center, { icon, draggable: true, autoPan: true, zIndexOffset: 1000 }).addTo(map);
     handle.on("drag", () => circle?.setLatLng(handle!.getLatLng()));
 
     map.on("move", clampIntoView); // 拖曳地圖時持續夾限在視野內

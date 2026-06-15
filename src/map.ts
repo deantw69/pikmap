@@ -306,8 +306,9 @@ function featureName(tags: Record<string, unknown>): string {
 }
 
 let legend: L.Control | null = null;
+let legendCollapsed = load<boolean>("legendCollapsed", false); // 圖例是否收合（會記住）
 
-/** 顯示／更新顏色圖例（含各類數量）；只列出數量 > 0 的分類，沒有則移除。 */
+/** 顯示／更新顏色圖例（含各類數量）；只列出數量 > 0 的分類，沒有則移除。可點標題收合。 */
 function updateLegend(styled: StyledCategory[], counts: number[] = []): void {
   if (legend) {
     legend.remove();
@@ -322,7 +323,9 @@ function updateLegend(styled: StyledCategory[], counts: number[] = []): void {
   legend = new L.Control({ position: "bottomright" });
   legend.onAdd = () => {
     const div = L.DomUtil.create("div", "legend");
-    div.innerHTML = rows
+    div.classList.toggle("collapsed", legendCollapsed);
+
+    const items = rows
       .map(
         ({ s, n }) =>
           `<div class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${escapeHtml(
@@ -330,6 +333,20 @@ function updateLegend(styled: StyledCategory[], counts: number[] = []): void {
           )}<span class="legend-count">${n}</span></div>`,
       )
       .join("");
+    div.innerHTML =
+      `<button type="button" class="legend-toggle" aria-label="收合 / 展開圖例">` +
+      `<span class="legend-title">圖例</span>` +
+      `<span class="legend-caret">${legendCollapsed ? "▸" : "▾"}</span></button>` +
+      `<div class="legend-body">${items}</div>`;
+
+    L.DomEvent.disableClickPropagation(div);
+    const caret = div.querySelector(".legend-caret") as HTMLElement;
+    div.querySelector(".legend-toggle")!.addEventListener("click", () => {
+      legendCollapsed = !legendCollapsed;
+      save("legendCollapsed", legendCollapsed);
+      div.classList.toggle("collapsed", legendCollapsed);
+      caret.textContent = legendCollapsed ? "▸" : "▾";
+    });
     return div;
   };
   legend.addTo(map);
