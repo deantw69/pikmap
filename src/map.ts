@@ -4,6 +4,9 @@
  */
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { FeatureCollection } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
 import { initZoomDisplay, initS2Grid } from "./grid";
@@ -17,7 +20,11 @@ interface SavedView {
 }
 
 let map: L.Map;
-let resultLayer: L.GeoJSON | null = null;
+let clusterGroup: L.MarkerClusterGroup | null = null; // 群聚開啟時的點狀結果容器
+let plainGroup: L.LayerGroup | null = null; // 群聚關閉時的點狀結果容器
+let areaLayer: L.FeatureGroup | null = null; // 面／線狀結果的外框
+let markers: L.Marker[] = []; // 目前結果的 emoji 標記（依索引對應結果清單）
+let clusterEnabled = load<boolean>("cluster", true); // 是否群聚顯示（使用者可切換、會記住）
 
 /** 初始化 Leaflet 地圖並加上 OSM 底圖。 */
 export function initMap(el: HTMLElement): L.Map {
@@ -37,6 +44,7 @@ export function initMap(el: HTMLElement): L.Map {
   initSearch(map); // 左上角地址搜尋框
   initZoomDisplay(map); // 右上角 zoom level
   initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
+  initClusterToggle(); // 群聚顯示開關
   initS2Grid(map); // zoom ≥ 17 顯示 S2 網格
 
   // 每次平移／縮放後記住目前視野
@@ -71,16 +79,61 @@ export function distanceMeters(a: L.LatLngExpression, b: L.LatLngExpression): nu
   return map.distance(a, b);
 }
 
-/** 移動到某筆結果並打開它的彈窗（給結果清單點擊用）。 */
+/** 移動到某筆結果並打開它的彈窗（給結果清單點擊用）。群聚開啟且被收起時會先展開。 */
 export function focusResult(index: number): void {
-  const layer = resultLayersByIndex[index];
-  if (!layer) return;
-  const ll =
-    "getLatLng" in layer && typeof (layer as L.Marker).getLatLng === "function"
-      ? (layer as L.Marker).getLatLng()
-      : (layer as L.Polygon).getBounds().getCenter();
-  map.setView(ll, Math.max(map.getZoom(), 17));
-  (layer as L.Layer & { openPopup?: () => void }).openPopup?.();
+  const marker = markers[index];
+  if (!marker) return;
+  if (clusterEnabled && clusterGroup) {
+    clusterGroup.zoomToShowLayer(marker, () => marker.openPopup());
+  } else {
+    map.setView(marker.getLatLng(), Math.max(map.getZoom(), 17));
+    marker.openPopup();
+  }
+}
+
+/** 切換群聚顯示的右上角按鈕（排在範圍圓鈕下方）。 */
+function initClusterToggle(): void {
+  const ctrl = new L.Control({ position: "topright" });
+  ctrl.onAdd = () => {
+    const btn = L.DomUtil.create("button", "cluster-toggle") as HTMLButtonElement;
+    btn.type = "button";
+    btn.title = "群聚顯示：密集時把標記聚合成數字";
+    btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="9" cy="10" r="4.2"/><circle cx="15.5" cy="9" r="3.4"/><circle cx="12.5" cy="15.5" r="3.8"/>
+    </svg>`;
+    const sync = () => {
+      btn.classList.toggle("active", clusterEnabled);
+      btn.setAttribute("aria-pressed", String(clusterEnabled));
+    };
+    sync();
+
+    L.DomEvent.disableClickPropagation(btn);
+    btn.addEventListener("click", () => {
+      clusterEnabled = !clusterEnabled;
+      save("cluster", clusterEnabled);
+      sync();
+      if (markers.length) renderMarkers();
+    });
+    return btn;
+  };
+  ctrl.addTo(map);
+}
+
+/** 依目前群聚設定，把結果標記放進對應容器並掛上地圖。 */
+function renderMarkers(): void {
+  clusterGroup?.remove();
+  clusterGroup = null;
+  plainGroup?.remove();
+  plainGroup = null;
+
+  if (clusterEnabled) {
+    clusterGroup = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50 });
+    clusterGroup.addLayers(markers);
+    clusterGroup.addTo(map);
+  } else {
+    plainGroup = L.layerGroup(markers);
+    plainGroup.addTo(map);
+  }
 }
 
 /** 一個被選取、且已配好顏色的分類 */
@@ -107,9 +160,6 @@ export interface ShowResultData {
   perCategory: { label: string; emoji: string; color: string; count: number }[];
   items: ResultItem[];
 }
-
-/** 結果圖層依索引存放，供 focusResult 點擊聚焦 */
-let resultLayersByIndex: L.Layer[] = [];
 
 /** 已解析條件的分類（內部用） */
 interface ParsedCategory {
@@ -141,15 +191,17 @@ function featureMatches(props: Record<string, unknown>, parsed: ParsedCategory):
 }
 
 /**
- * 清掉舊的結果，畫上新的 GeoJSON 並縮放到結果範圍。回傳 feature 數量。
+ * 清掉舊的結果，畫上新的 GeoJSON 並縮放到結果範圍。
+ * 點狀結果用 emoji 標記並群聚；面／線狀結果額外畫外框，中心也放一個 emoji 標記。
  * 傳入 styled 時：≥2 個分類會依 tags 比對上色並顯示圖例；<2 個則統一用預設色。
  */
 export function showResult(geojson: FeatureCollection, styled: StyledCategory[] = []): ShowResultData {
-  if (resultLayer) {
-    resultLayer.remove();
-    resultLayer = null;
-  }
-  resultLayersByIndex = [];
+  clusterGroup?.remove();
+  clusterGroup = null;
+  plainGroup?.remove();
+  plainGroup = null;
+  areaLayer?.remove();
+  markers = [];
 
   const useColors = styled.length >= 2;
   const parsed: ParsedCategory[] = styled.map((s) => ({
@@ -166,64 +218,55 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     return styled.length === 1 ? 0 : -1;
   };
 
+  areaLayer = L.featureGroup();
+  const bounds = L.latLngBounds([]);
+
   const counts = styled.map(() => 0);
   const items: ResultItem[] = [];
+  const features = geojson.features ?? [];
 
-  resultLayer = L.geoJSON(geojson, {
-    style: (feature) => {
-      const idx = feature ? categoryIndex((feature.properties ?? {}) as Record<string, unknown>) : -1;
-      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
-      return { color: c, weight: 2, fillOpacity: 0.2 };
-    },
-    pointToLayer: (feature, latlng) => {
-      const idx = categoryIndex((feature.properties ?? {}) as Record<string, unknown>);
-      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
-      return L.circleMarker(latlng, {
-        radius: 10,
-        color: c,
-        fillColor: c,
-        fillOpacity: 0.5,
-        weight: 3,
-      });
-    },
-    onEachFeature: (feature, layer) => {
-      const tags = (feature.properties ?? {}) as Record<string, unknown>;
-      const rows = Object.entries(tags)
-        .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
-        .join("");
-      if (rows) layer.bindPopup(`<table class="tags">${rows}</table>`);
+  for (const feature of features) {
+    const tags = (feature.properties ?? {}) as Record<string, unknown>;
+    const idx = categoryIndex(tags);
+    if (idx >= 0) counts[idx]++;
+    const cat = idx >= 0 ? styled[idx].category : null;
+    const color = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
 
-      const idx = categoryIndex(tags);
-      if (idx >= 0) counts[idx]++;
+    // 結果代表座標：點用本身，面／線畫外框並取範圍中心
+    let center: L.LatLng;
+    const geom = feature.geometry;
+    if (geom && geom.type === "Point") {
+      const [lng, lat] = geom.coordinates;
+      center = L.latLng(lat, lng);
+    } else {
+      const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
+      shape.addTo(areaLayer);
+      center = shape.getBounds().getCenter();
+    }
 
-      const index = resultLayersByIndex.length;
-      resultLayersByIndex.push(layer);
+    const marker = L.marker(center, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
+    const popup = tagsPopup(tags);
+    if (popup) marker.bindPopup(popup);
+    bounds.extend(center);
 
-      // 結果代表座標：點用本身，面／線用範圍中心
-      const center =
-        "getLatLng" in layer && typeof (layer as L.Marker).getLatLng === "function"
-          ? (layer as L.Marker).getLatLng()
-          : (layer as L.Polygon).getBounds().getCenter();
-      const cat = idx >= 0 ? styled[idx].category : null;
-      const c = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
-      items.push({
-        index,
-        name: featureName(tags) || cat?.label || "(未命名)",
-        emoji: cat?.emoji ?? "📍",
-        label: cat?.label ?? "其他",
-        color: c,
-        latlng: [center.lat, center.lng],
-      });
-    },
-  }).addTo(map);
+    items.push({
+      index: markers.length,
+      name: featureName(tags) || cat?.label || "(未命名)",
+      emoji: cat?.emoji ?? "📍",
+      label: cat?.label ?? "其他",
+      color,
+      latlng: [center.lat, center.lng],
+    });
+    markers.push(marker);
+  }
+
+  areaLayer.addTo(map);
+  renderMarkers(); // 依目前群聚設定把標記放上地圖
 
   updateLegend(useColors ? styled : [], counts);
 
-  const count = geojson.features?.length ?? 0;
-  if (count > 0) {
-    const bounds = resultLayer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
-  }
+  const count = features.length;
+  if (count > 0 && bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
 
   const perCategory = styled.map((s, i) => ({
     label: s.category.label,
@@ -232,6 +275,25 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     count: counts[i],
   }));
   return { count, perCategory, items };
+}
+
+/** 把 tags 組成彈窗表格 HTML（無 tags 回空字串）。 */
+function tagsPopup(tags: Record<string, unknown>): string {
+  const rows = Object.entries(tags)
+    .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
+    .join("");
+  return rows ? `<table class="tags">${rows}</table>` : "";
+}
+
+/** 產生顯示 emoji 的地圖標記圖示（圓底、分類色外框）。 */
+function emojiIcon(emoji: string, color: string): L.DivIcon {
+  return L.divIcon({
+    className: "emoji-marker",
+    html: `<span class="emoji-pin" style="--pin:${color}">${emoji}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -15],
+  });
 }
 
 /** 從 OSM tags 取一個可讀名稱。 */

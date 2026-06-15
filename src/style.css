@@ -353,7 +353,7 @@ body.menu-collapsed #pane-resizer {
 }
 
 /* 範圍圓中心的拖曳把手 */
-.range-handle {
+.leaflet-div-icon.range-handle {
   background: #fff;
   border: 3px solid var(--brand);
   border-radius: 50%;
@@ -509,12 +509,61 @@ body.menu-collapsed #pane-resizer {
   background: #ffe5e5;
 }
 
-/* 使用者目前位置的藍點 */
-.user-dot {
+/* 群聚顯示切換鈕（排在範圍圓鈕下方，白底、開啟時轉品牌綠） */
+.cluster-toggle {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #9aa3a0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.cluster-toggle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.cluster-toggle:hover {
+  background: #f0f4f2;
+}
+
+.cluster-toggle.active {
+  color: var(--brand);
+}
+
+/* 使用者目前位置的藍點（.leaflet-div-icon 提高優先序蓋過預設白底框） */
+.leaflet-div-icon.user-dot {
   background: #1a73e8;
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.4);
+}
+
+/* 結果的 emoji 標記 */
+.leaflet-div-icon.emoji-marker {
+  background: transparent;
+  border: none;
+}
+
+.emoji-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  line-height: 1;
+  background: #fff;
+  border: 2px solid var(--pin, #2b7a4b);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* 圖例的各類數量 */
