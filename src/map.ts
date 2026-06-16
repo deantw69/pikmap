@@ -8,7 +8,8 @@ import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { FeatureCollection, Geometry } from "geojson";
-import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
+import { S2 } from "s2-geometry";
+import { MAP_DEFAULT, MARKER_COLOR, S2_GRID_LEVEL, type QueryCategory } from "./config";
 import { parseFilter, matchesFilterSet, type FilterConds } from "./classify";
 import { initZoomDisplay, initS2Grid } from "./grid";
 import { initRangeCircle } from "./circle";
@@ -216,33 +217,39 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     const cat = idx >= 0 ? styled[idx].category : null;
     const color = useColors && idx >= 0 ? styled[idx].color : MARKER_COLOR;
 
-    // 結果代表座標：點用本身，面／線畫外框並取範圍中心
-    let center: L.LatLng;
+    // 標記位置：點→自身；面→範圍中心；線→經過的每個 S2 網格各放一個（細長河流沿線分佈）
+    let pts: L.LatLng[];
     const geom = feature.geometry;
     if (geom && geom.type === "Point") {
       const [lng, lat] = geom.coordinates;
-      center = L.latLng(lat, lng);
+      pts = [L.latLng(lat, lng)];
     } else {
       const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
       shape.addTo(areaLayer);
-      // 線狀（河流/溪流）取沿線長度中點，標記才會落在線上；面狀則用範圍中心
-      center = lineMidpoint(geom) ?? shape.getBounds().getCenter();
+      const cellPts = lineCellPoints(geom, S2_GRID_LEVEL);
+      pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
     }
 
-    const marker = L.marker(center, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
     const popup = tagsPopup(tags);
-    if (popup) marker.bindPopup(popup);
-    bounds.extend(center);
+    const base = markers.length;
+    for (const p of pts) {
+      const m = L.marker(p, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
+      if (popup) m.bindPopup(popup);
+      bounds.extend(p);
+      markers.push(m);
+    }
 
+    // 清單只放一筆，代表座標取中間那個標記（點擊聚焦用）
+    const repIdx = Math.floor(pts.length / 2);
+    const center = pts[repIdx];
     items.push({
-      index: markers.length,
+      index: base + repIdx,
       name: featureName(tags) || cat?.label || "(未命名)",
       emoji: cat?.emoji ?? "📍",
       label: cat?.label ?? "其他",
       color,
       latlng: [center.lat, center.lng],
     });
-    markers.push(marker);
   }
 
   areaLayer.addTo(map);
@@ -281,45 +288,42 @@ export function emojiIcon(emoji: string, color: string): L.DivIcon {
   });
 }
 
-/** 折線總長（用經緯度平面近似，只為比例計算）。 */
-function lineLength(coords: number[][]): number {
-  let s = 0;
-  for (let i = 1; i < coords.length; i++) {
-    s += Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]);
-  }
-  return s;
-}
+/**
+ * 線狀幾何「沿線經過的每個 S2 cell」各取一個落在線上的點。
+ * 沿線以小於一格的間距取樣，每進入新的 cell 就記一個點；非線狀回 []。
+ */
+function lineCellPoints(geom: Geometry | null | undefined, level: number): L.LatLng[] {
+  const lines: number[][][] =
+    geom?.type === "LineString"
+      ? [geom.coordinates]
+      : geom?.type === "MultiLineString"
+        ? geom.coordinates
+        : [];
 
-/** 線狀幾何沿長度的中點（必落在線上）；MultiLineString 取最長一段；非線狀回 null。 */
-function lineMidpoint(geom: Geometry | null | undefined): L.LatLng | null {
-  let line: number[][] | null = null;
-  if (geom?.type === "LineString") {
-    line = geom.coordinates;
-  } else if (geom?.type === "MultiLineString") {
-    let best = -1;
-    for (const seg of geom.coordinates) {
-      const len = lineLength(seg);
-      if (len > best) {
-        best = len;
-        line = seg;
+  const out: L.LatLng[] = [];
+  const seen = new Set<string>();
+  const STEP_M = 30; // 取樣間距，小於一格(~80m)以免漏格
+  const CAP = 500; // 安全上限，避免極長線爆量
+
+  for (const line of lines) {
+    for (let i = 1; i < line.length; i++) {
+      const a = line[i - 1];
+      const b = line[i];
+      const n = Math.max(1, Math.ceil(L.latLng(a[1], a[0]).distanceTo(L.latLng(b[1], b[0])) / STEP_M));
+      for (let k = 0; k <= n; k++) {
+        const t = k / n;
+        const lat = a[1] + (b[1] - a[1]) * t;
+        const lng = a[0] + (b[0] - a[0]) * t;
+        const key = S2.S2Cell.FromLatLng({ lat, lng }, level).toHilbertQuadkey();
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(L.latLng(lat, lng));
+          if (out.length >= CAP) return out;
+        }
       }
     }
   }
-  if (!line || line.length < 2) return null;
-
-  let half = lineLength(line) / 2;
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1];
-    const b = line[i];
-    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (half <= d) {
-      const t = d === 0 ? 0 : half / d;
-      return L.latLng(a[1] + (b[1] - a[1]) * t, a[0] + (b[0] - a[0]) * t);
-    }
-    half -= d;
-  }
-  const last = line[line.length - 1];
-  return L.latLng(last[1], last[0]);
+  return out;
 }
 
 /** 從 OSM tags 取一個可讀名稱。 */
