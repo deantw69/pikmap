@@ -5,7 +5,7 @@
  */
 import osmtogeojson from "osmtogeojson";
 import type { FeatureCollection } from "geojson";
-import { OVERPASS_ENDPOINT, QUERY_TIMEOUT_MS, type QueryCategory } from "./config";
+import { OVERPASS_ENDPOINTS, QUERY_TIMEOUT_MS, type QueryCategory } from "./config";
 import { getBboxString } from "./map";
 
 /**
@@ -53,13 +53,15 @@ function buildUnion(categories: QueryCategory[], bboxToken: string): { areaDecls
 
 export function buildQuery(categories: QueryCategory[]): string {
   const { areaDecls, body } = buildUnion(categories, "{{bbox}}");
+  // out geom({{bbox}}) 會把幾何裁切到目前視野：長河流等線狀資料只會畫出視野內那一段，
+  // 不會把整條 way（源頭到出海口）都回傳，資料量與沿線標記都因此大減。
   return `[out:json][timeout:25];
 ${areaDecls ? areaDecls + "\n" : ""}// gather results
 (
 ${body}
 );
 // print results
-out geom;`;
+out geom({{bbox}});`;
 }
 
 /**
@@ -83,16 +85,70 @@ export function expandTemplate(query: string): string {
   return query.replace(/\{\{\s*bbox\s*\}\}/g, getBboxString());
 }
 
-/** 送查詢到 Overpass API，回傳轉好的 GeoJSON。 */
+/** 可重試（換鏡像）的錯誤：伺服器忙碌、逾時、連線問題。語法等錯誤不換鏡像。 */
+class RetryableError extends Error {}
+
+/** 取得選取分類中最深的降級層數（沒有任何 fallbackFilters 則為 0）。 */
+function maxFallbackLevel(categories: QueryCategory[]): number {
+  return Math.max(0, ...categories.map((c) => c.fallbackFilters?.length ?? 0));
+}
+
+/** 把分類調整到指定降級層級：level 0 用原始 filters；之後改用 fallbackFilters（不足則取最輕一階）。 */
+function categoriesAtLevel(categories: QueryCategory[], level: number): QueryCategory[] {
+  if (level === 0) return categories;
+  return categories.map((c) => {
+    const tiers = c.fallbackFilters;
+    if (!tiers || tiers.length === 0) return c; // 無降級設定者維持原樣
+    const idx = Math.min(level, tiers.length) - 1;
+    return { ...c, filters: tiers[idx] };
+  });
+}
+
+/**
+ * 一般查詢（含漸進降級）：先用完整 filters；若逾時／伺服器忙碌而失敗，
+ * 對有設 fallbackFilters 的分類逐步改用更輕量的條件再重試（每一階都會輪流試各鏡像）。
+ */
+export async function runQueryForCategories(categories: QueryCategory[]): Promise<FeatureCollection> {
+  const maxLevel = maxFallbackLevel(categories);
+  let lastErr: Error = new Error("查詢失敗");
+  for (let level = 0; level <= maxLevel; level++) {
+    try {
+      return await runQuery(buildQuery(categoriesAtLevel(categories, level)));
+    } catch (err) {
+      lastErr = err as Error; // 還有更輕的層級就繼續降級重試，否則拋出
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * 送查詢到 Overpass API，回傳轉好的 GeoJSON。
+ * 依序嘗試 OVERPASS_ENDPOINTS：某鏡像忙碌（504/429/5xx）或逾時時自動換下一個。
+ */
 export async function runQuery(rawQuery: string): Promise<FeatureCollection> {
   const query = expandTemplate(rawQuery);
 
+  let lastErr: Error = new Error("查詢失敗");
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      return await postQuery(endpoint, query);
+    } catch (err) {
+      lastErr = err as Error;
+      if (!(err instanceof RetryableError)) throw err; // 語法錯誤等：換鏡像也沒用，直接拋出
+      // 否則試下一個鏡像
+    }
+  }
+  throw lastErr; // 全部鏡像都忙碌／逾時
+}
+
+/** 對單一端點送出一次查詢。可重試的失敗丟 RetryableError。 */
+async function postQuery(endpoint: string, query: string): Promise<FeatureCollection> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
 
   let res: Response;
   try {
-    res = await fetch(OVERPASS_ENDPOINT, {
+    res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: "data=" + encodeURIComponent(query),
@@ -101,15 +157,18 @@ export async function runQuery(rawQuery: string): Promise<FeatureCollection> {
   } catch (err) {
     clearTimeout(timer);
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error(`查詢逾時（超過 ${QUERY_TIMEOUT_MS / 1000} 秒）`);
+      throw new RetryableError(`查詢逾時（超過 ${QUERY_TIMEOUT_MS / 1000} 秒）`);
     }
-    throw new Error("無法連線到 Overpass API：" + (err as Error).message);
+    throw new RetryableError("無法連線到 Overpass API：" + (err as Error).message);
   }
   clearTimeout(timer);
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Overpass 回應 ${res.status}${text ? "：" + stripHtml(text).slice(0, 200) : ""}`);
+    const msg = `Overpass 回應 ${res.status}${text ? "：" + stripHtml(text).slice(0, 200) : ""}`;
+    // 5xx（如 504）與 429（限流）多為暫時忙碌 → 換鏡像；4xx（語法等）直接拋出
+    if (res.status >= 500 || res.status === 429) throw new RetryableError(msg);
+    throw new Error(msg);
   }
 
   let data: unknown;

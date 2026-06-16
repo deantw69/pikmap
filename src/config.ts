@@ -3,8 +3,18 @@
  * 想換 API endpoint、預設查詢、預設地圖位置，都改這裡。
  */
 
-/** Overpass API 端點。可換成自架 instance 或其他公開鏡像。 */
-export const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
+/**
+ * Overpass API 端點清單（依序嘗試）。
+ * 主機回 504/429/逾時等「忙碌」錯誤時，自動改打下一個鏡像。皆為支援瀏覽器 CORS 的公開實例。
+ */
+export const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+/** 相容用：單一端點（清單第一個）。 */
+export const OVERPASS_ENDPOINT = OVERPASS_ENDPOINTS[0];
 
 /** 品牌名稱 */
 export const BRAND = "pikmap";
@@ -83,6 +93,13 @@ export interface QueryCategory {
    * 設定後查詢會加上 (area.<iso>) 與 bbox 取交集，落在該地區之外的結果不會回傳。
    */
   areaScope?: string;
+  /**
+   * 可選：查詢逾時／伺服器忙碌時的「漸進降級」備援過濾條件（由重到輕）。
+   * filters 是預設（最完整）；失敗時依序改用 fallbackFilters[0]、[1]…（越後面越輕量）。
+   * 用於 stream/river 這類量大的線狀資料：先全查，逾時就逐步拿掉最耗資源的條件。
+   * 上色／分類仍用 filters（完整集合），降級結果是其子集，比對照樣成立。
+   */
+  fallbackFilters?: string[][];
 }
 
 // 完全對應 https://www.pikminwiki.com/Decor_Pikmin 頁面上「直接寫出的 OSM 標籤」。
@@ -116,7 +133,18 @@ export const CATEGORIES: QueryCategory[] = [
   // ── 自然 ──
   { id: "park", label: "公園", emoji: "🌳", group: "自然", filters: ['["leisure"="park"]'] }, // Park
   { id: "forest", label: "森林", emoji: "🌲", group: "自然", filters: ['["natural"="wood"]', '["landuse"="forest"]'] }, // Forest
-  { id: "water", label: "水域", emoji: "💧", group: "自然", filters: ['["natural"="water"]', '["waterway"="river"]', '["waterway"="stream"]'] }, // Waterside（natural=water 含湖沼/water=river 面；waterway=river/stream 補河流與溪流線）
+  {
+    id: "water",
+    label: "水域",
+    emoji: "💧",
+    group: "自然",
+    // Waterside：預設含湖沼面 + 河流 + 溪流；溪流線量大，逾時/504 時自動降級（先去 stream、再去 river）
+    filters: ['["natural"="water"]', '["waterway"="river"]', '["waterway"="stream"]'],
+    fallbackFilters: [
+      ['["natural"="water"]', '["waterway"="river"]'], // 第 1 階：拿掉量最大的 stream
+      ['["natural"="water"]'], // 第 2 階：再拿掉 river，只留湖沼面
+    ],
+  },
   { id: "beach", label: "海灘", emoji: "🏖️", group: "自然", filters: ['["natural"="beach"]'] }, // Beach
   { id: "peak", label: "山峰", emoji: "⛰️", group: "自然", filters: ['["natural"="peak"]'] }, // Mountain
   { id: "zoo", label: "動物園", emoji: "🦁", group: "自然", filters: ['["tourism"="zoo"]'] }, // Zoo

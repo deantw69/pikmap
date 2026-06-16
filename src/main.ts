@@ -8,7 +8,7 @@ import { initLocate } from "./location";
 import { initResults, renderResults, refreshResults } from "./results";
 import { initPure, setPureActive } from "./pure";
 import { initPikminDraw } from "./pikmin";
-import { runQuery, buildQuery } from "./overpass";
+import { runQueryForCategories, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
 import { load, save } from "./storage";
 
@@ -160,7 +160,7 @@ async function onRun() {
   runBtnPanel.disabled = true;
   setStatus("查詢中…");
   try {
-    const geojson = await runQuery(buildQuery(categories));
+    const geojson = await runQueryForCategories(categories);
     const data = showResult(geojson, styled);
     renderResults(data);
     setStatus(data.count > 0 ? `完成：${data.count} 筆結果` : "完成：沒有符合的結果");
