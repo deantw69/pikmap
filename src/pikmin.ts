@@ -34,8 +34,8 @@ const PIKMIN: Pikmin[] = [
   { name: "白皮克敏", key: "white", emoji: "⚪" },
   { name: "紫皮克敏", key: "purple", emoji: "🟣" },
   { name: "岩石皮克敏", key: "rock", emoji: "🪨" },
-  { name: "羽毛皮克敏", key: "winged", emoji: "🌸" },
-  { name: "冰皮克敏", key: "ice", emoji: "🧊" },
+  { name: "羽翅皮克敏", key: "winged", emoji: "🌸" },
+  { name: "冰凍皮克敏", key: "ice", emoji: "🧊" },
 ];
 
 /** 拔出動畫長度（毫秒），需與 style.css 的 @keyframes pluck-rise 對齊 */

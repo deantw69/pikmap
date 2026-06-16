@@ -501,12 +501,13 @@ body.menu-collapsed #pane-resizer {
   width: 220px;
   height: 250px;
   margin: 4px auto 14px;
+  overflow: hidden; /* 皮克敏從下方冒出、盆子滾出邊界都裁切乾淨 */
 }
 
 .pluck-pikmin {
   position: absolute;
   left: 50%;
-  bottom: 58px;
+  bottom: 28px; /* 離地高度，拔出（盆子滾走）後不會懸空 */
   transform: translateX(-50%);
   transform-origin: 50% 100%; /* 以底部為原點，縮放時像從盆口長出來 */
   /* 固定寬高並置中內容：置中不依賴圖片載入，避免圖片載入前寬度為 0 導致先偏右再置中 */
