@@ -16,7 +16,9 @@ const mapPane = document.getElementById("map-pane")!;
 const categoryContainer = document.getElementById("category-container")!;
 const previewEl = document.getElementById("query-preview")!;
 const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
+const runBtnPanel = document.getElementById("run-btn-panel") as HTMLButtonElement;
 const statusEl = document.getElementById("status")!;
+const toastEl = document.getElementById("toast")!;
 const menuToggle = document.getElementById("menu-toggle") as HTMLButtonElement;
 const paneArrow = document.getElementById("pane-arrow") as HTMLButtonElement;
 const paneResizer = document.getElementById("pane-resizer")!;
@@ -90,9 +92,25 @@ function initPaneResize() {
   });
 }
 
+const isMobile = () => window.matchMedia("(max-width: 760px)").matches;
+
+let toastTimer = 0;
+function showToast(msg: string, isError = false) {
+  window.clearTimeout(toastTimer);
+  if (!msg) {
+    toastEl.classList.remove("show");
+    return;
+  }
+  toastEl.textContent = msg;
+  toastEl.classList.toggle("error", isError);
+  toastEl.classList.add("show");
+  toastTimer = window.setTimeout(() => toastEl.classList.remove("show"), isError ? 6000 : 3500);
+}
+
 function setStatus(msg: string, isError = false) {
   statusEl.textContent = msg;
   statusEl.classList.toggle("error", isError);
+  showToast(msg, isError);
 }
 
 /** 依目前勾選更新查詢預覽。 */
@@ -143,6 +161,7 @@ async function onRun() {
   }));
 
   runBtn.disabled = true;
+  runBtnPanel.disabled = true;
   setStatus("查詢中…");
   try {
     const geojson = await runQuery(buildQuery(categories));
@@ -153,10 +172,16 @@ async function onRun() {
     setStatus((err as Error).message, true);
   } finally {
     runBtn.disabled = false;
+    runBtnPanel.disabled = false;
   }
 }
 
 runBtn.addEventListener("click", onRun);
+// 手機：選單底部的大查詢鈕，查詢後自動收起面板讓使用者看地圖
+runBtnPanel.addEventListener("click", () => {
+  onRun();
+  if (isMobile()) setMenuCollapsed(true);
+});
 
 // Ctrl/Cmd + Enter 也可執行查詢
 document.addEventListener("keydown", (e) => {

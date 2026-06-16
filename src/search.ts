@@ -123,8 +123,23 @@ export function initSearch(map: L.Map): void {
         geocode(map, input);
       }
     };
-    btn.addEventListener("click", go);
-    input.addEventListener("blur", () => window.setTimeout(closeList, 150));
+
+    // 手機：搜尋框預設收合成放大鏡，先點一下展開並聚焦，再點才查詢
+    const isMobile = () => window.matchMedia("(max-width: 760px)").matches;
+    btn.addEventListener("click", () => {
+      if (isMobile() && !div.classList.contains("expanded")) {
+        div.classList.add("expanded");
+        input.focus();
+        return;
+      }
+      go();
+    });
+    input.addEventListener("blur", () =>
+      window.setTimeout(() => {
+        closeList();
+        if (isMobile() && !input.value.trim()) div.classList.remove("expanded");
+      }, 150),
+    );
 
     return div;
   };
