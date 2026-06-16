@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Geometry } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
 import { parseFilter, matchesFilterSet, type FilterConds } from "./classify";
 import { initZoomDisplay, initS2Grid } from "./grid";
@@ -225,7 +225,8 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     } else {
       const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
       shape.addTo(areaLayer);
-      center = shape.getBounds().getCenter();
+      // 線狀（河流/溪流）取沿線長度中點，標記才會落在線上；面狀則用範圍中心
+      center = lineMidpoint(geom) ?? shape.getBounds().getCenter();
     }
 
     const marker = L.marker(center, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
@@ -278,6 +279,47 @@ export function emojiIcon(emoji: string, color: string): L.DivIcon {
     iconAnchor: [15, 15],
     popupAnchor: [0, -15],
   });
+}
+
+/** 折線總長（用經緯度平面近似，只為比例計算）。 */
+function lineLength(coords: number[][]): number {
+  let s = 0;
+  for (let i = 1; i < coords.length; i++) {
+    s += Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]);
+  }
+  return s;
+}
+
+/** 線狀幾何沿長度的中點（必落在線上）；MultiLineString 取最長一段；非線狀回 null。 */
+function lineMidpoint(geom: Geometry | null | undefined): L.LatLng | null {
+  let line: number[][] | null = null;
+  if (geom?.type === "LineString") {
+    line = geom.coordinates;
+  } else if (geom?.type === "MultiLineString") {
+    let best = -1;
+    for (const seg of geom.coordinates) {
+      const len = lineLength(seg);
+      if (len > best) {
+        best = len;
+        line = seg;
+      }
+    }
+  }
+  if (!line || line.length < 2) return null;
+
+  let half = lineLength(line) / 2;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1];
+    const b = line[i];
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (half <= d) {
+      const t = d === 0 ? 0 : half / d;
+      return L.latLng(a[1] + (b[1] - a[1]) * t, a[0] + (b[0] - a[0]) * t);
+    }
+    half -= d;
+  }
+  const last = line[line.length - 1];
+  return L.latLng(last[1], last[0]);
 }
 
 /** 從 OSM tags 取一個可讀名稱。 */

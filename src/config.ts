@@ -116,7 +116,7 @@ export const CATEGORIES: QueryCategory[] = [
   // ── 自然 ──
   { id: "park", label: "公園", emoji: "🌳", group: "自然", filters: ['["leisure"="park"]'] }, // Park
   { id: "forest", label: "森林", emoji: "🌲", group: "自然", filters: ['["natural"="wood"]', '["landuse"="forest"]'] }, // Forest
-  { id: "water", label: "水域", emoji: "💧", group: "自然", filters: ['["natural"="water"]'] }, // Waterside
+  { id: "water", label: "水域", emoji: "💧", group: "自然", filters: ['["natural"="water"]', '["waterway"="river"]', '["waterway"="stream"]'] }, // Waterside（natural=water 含湖沼/water=river 面；waterway=river/stream 補河流與溪流線）
   { id: "beach", label: "海灘", emoji: "🏖️", group: "自然", filters: ['["natural"="beach"]'] }, // Beach
   { id: "peak", label: "山峰", emoji: "⛰️", group: "自然", filters: ['["natural"="peak"]'] }, // Mountain
   { id: "zoo", label: "動物園", emoji: "🦁", group: "自然", filters: ['["tourism"="zoo"]'] }, // Zoo
