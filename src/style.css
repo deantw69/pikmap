@@ -495,21 +495,39 @@ body.menu-collapsed #pane-resizer {
   color: #555;
 }
 
-.pikmin-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 150px;
+/* 抽皮克敏舞台：花苗盆在前、皮克敏從盆中拔出 */
+.pikmin-stage {
+  position: relative;
+  width: 220px;
+  height: 250px;
   margin: 4px auto 14px;
 }
 
-/* 像素圖：放大時保持鋸齒（不要模糊），維持像素風 */
-.pikmin-sprite {
-  height: 140px;
+.pluck-pikmin {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%; /* 以底部為原點，縮放時像從盆口長出來 */
+  height: 200px;
+  z-index: 1; /* 在盆子後面，看起來像從盆裡冒出來 */
+}
+
+.pluck-pikmin img {
+  height: 100%;
   width: auto;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25));
+}
+
+.pluck-pot {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 132px;
+  height: auto;
+  z-index: 2;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.2));
 }
 
 .pikmin-emoji-fallback {
@@ -517,24 +535,70 @@ body.menu-collapsed #pane-resizer {
   line-height: 1;
 }
 
-.pikmin-card.settled .pikmin-display {
-  animation: pikmin-pop 0.4s ease;
+/* 拔出動畫：皮克敏從盆中往上彈、微回彈定格；盆子同時晃一下 */
+/* 準備狀態：盆子反覆搖晃並可點擊，等使用者點花苗拔出 */
+.pikmin-stage.ready .pluck-pot {
+  animation: pot-wiggle 1s ease-in-out infinite;
+  cursor: pointer;
 }
 
-@keyframes pikmin-pop {
-  0% {
-    transform: scale(0.7);
+@keyframes pot-wiggle {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(0);
   }
-  60% {
-    transform: scale(1.15);
+  25% {
+    transform: translateX(-50%) rotate(-6deg);
+  }
+  75% {
+    transform: translateX(-50%) rotate(6deg);
+  }
+}
+
+.pikmin-stage.plucking .pluck-pikmin {
+  animation: pluck-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pluck-rise {
+  0% {
+    transform: translate(-50%, 30%) scale(0.25);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-50%, -6%) scale(1.06);
+  }
+  85% {
+    transform: translate(-50%, 2%) scale(0.98);
   }
   100% {
-    transform: scale(1);
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* 按下拔出時，盆子往左滾開並淡出（與皮克敏冒出同步） */
+.pikmin-stage.plucking .pluck-pot {
+  animation: pot-roll-left 0.7s ease-in forwards;
+}
+
+@keyframes pot-roll-left {
+  0% {
+    transform: translateX(-50%) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-280%) rotate(-540deg);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pikmin-card.settled .pikmin-emoji {
+  .pikmin-stage.ready .pluck-pot,
+  .pikmin-stage.plucking .pluck-pikmin,
+  .pikmin-stage.plucking .pluck-pot {
     animation: none;
   }
 }

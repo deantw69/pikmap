@@ -31,13 +31,9 @@ const modePureBtn = document.getElementById("mode-pure") as HTMLButtonElement;
 const map = initMap(mapPane);
 initLocate(map, refreshResults); // 左上角定位鈕；定位更新後重排結果距離
 initResults(resultsList);
-// 趣味：抽皮克敏 — 仍在開發中，只在 dev 顯示，正式版隱藏按鈕
+// 趣味：抽皮克敏 — 所有人可見
 const drawBtn = document.getElementById("draw-btn") as HTMLButtonElement;
-if (import.meta.env.DEV) {
-  initPikminDraw(drawBtn);
-} else {
-  drawBtn.style.display = "none";
-}
+initPikminDraw(drawBtn);
 
 // 還原上次調好的選單寬度（桌機）；手機為懸浮固定寬度，不受此影響
 const savedWidth = load<number | null>("menuWidth", null);

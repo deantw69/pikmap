@@ -1,12 +1,13 @@
 /**
  * 趣味小功能：從 Pikmin Bloom 目前的 8 種皮克敏抽一個。
- * 純前端、不碰任何 API；點頂部「抽皮克敏」彈出小視窗，跑一段滾動動畫後定格。
+ * 純前端、不碰任何 API；點頂部「抽皮克敏」彈出小視窗，
+ * 播放「從花苗盆裡拔出來」的動畫後定格。
  *
- * 像素圖放在 src/assets/pikmin/<key>.png（透明或白底皆可），會被 Vite 打包並依 base 改寫路徑。
- * 對應檔名見每個皮克敏的 key；缺圖時自動退回 emoji，不會壞 build。
+ * 像素圖放在 src/assets/pikmin/<key>.png（含花苗盆 seedling.png），會被 Vite 打包並依 base 改寫路徑。
+ * 缺圖時自動退回 emoji，不會壞 build。
  */
 
-// 自動收集 src/assets/pikmin 下的像素圖（有就用、沒有就退回 emoji）
+// 自動收集 src/assets/pikmin 下的圖（有就用、沒有就退回 emoji）
 const SPRITES = import.meta.glob("./assets/pikmin/*.png", {
   eager: true,
   query: "?url",
@@ -37,8 +38,12 @@ const PIKMIN: Pikmin[] = [
   { name: "冰皮克敏", key: "ice", emoji: "🧊" },
 ];
 
+/** 拔出動畫長度（毫秒），需與 style.css 的 @keyframes pluck-rise 對齊 */
+const PLUCK_MS = 900;
+
 let backdrop: HTMLElement | null = null;
-let displayEl: HTMLElement | null = null;
+let stageEl: HTMLElement | null = null;
+let pikminEl: HTMLElement | null = null;
 let nameEl: HTMLElement | null = null;
 let drawBtnEl: HTMLButtonElement | null = null;
 let rolling = false;
@@ -54,16 +59,27 @@ function build(): void {
   backdrop.innerHTML = `
     <div class="pikmin-card" role="dialog" aria-modal="true" aria-label="抽皮克敏">
       <button type="button" class="pikmin-close" aria-label="關閉">×</button>
-      <div class="pikmin-display" aria-live="polite"></div>
-      <div class="pikmin-name">準備抽籤…</div>
-      <button type="button" class="pikmin-draw">抽一個！</button>
+      <div class="pikmin-stage" aria-live="polite">
+        <div class="pluck-pikmin"></div>
+        <img class="pluck-pot" alt="花苗盆" />
+      </div>
+      <div class="pikmin-name">準備拔皮克敏…</div>
+      <button type="button" class="pikmin-draw">拔一個！</button>
     </div>`;
 
-  displayEl = backdrop.querySelector(".pikmin-display");
+  stageEl = backdrop.querySelector(".pikmin-stage");
+  pikminEl = backdrop.querySelector(".pluck-pikmin");
   nameEl = backdrop.querySelector(".pikmin-name");
   drawBtnEl = backdrop.querySelector(".pikmin-draw");
 
-  drawBtnEl!.addEventListener("click", roll);
+  // 花苗盆圖（缺圖就不顯示盆子，仍可拔）
+  const pot = spriteUrl("seedling");
+  const potEl = backdrop.querySelector(".pluck-pot") as HTMLImageElement;
+  if (pot) potEl.src = pot;
+  else potEl.style.display = "none";
+  potEl.addEventListener("click", pluck); // 點花苗 → 拔出
+
+  drawBtnEl!.addEventListener("click", setReady); // 「再拔一個」→ 回到準備狀態（不立即拔）
   backdrop.querySelector(".pikmin-close")!.addEventListener("click", close);
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) close();
@@ -76,7 +92,21 @@ function build(): void {
 function open(): void {
   if (!backdrop) build();
   backdrop!.classList.add("show");
-  roll();
+  setReady();
+}
+
+/** 準備狀態：盆子反覆搖晃、隱藏按鈕，等使用者點花苗。 */
+function setReady(): void {
+  rolling = false;
+  stageEl?.classList.remove("plucking");
+  stageEl?.classList.add("ready");
+  if (pikminEl) pikminEl.innerHTML = "";
+  if (nameEl) nameEl.textContent = "點花苗拔出皮克敏！";
+  if (drawBtnEl) {
+    // 用 visibility 隱藏（保留空間），整個區域高度才不會忽高忽低
+    drawBtnEl.style.visibility = "hidden";
+    drawBtnEl.textContent = "再拔一個";
+  }
 }
 
 function close(): void {
@@ -87,40 +117,33 @@ function onKey(e: KeyboardEvent): void {
   if (e.key === "Escape") close();
 }
 
-/** 跑一段滾動動畫，最後定格在隨機一個。 */
-function roll(): void {
-  if (rolling || !displayEl || !nameEl || !drawBtnEl) return;
+/** 點花苗觸發：隨機選一隻，播放從花苗盆拔出的動畫，結束後定格、顯示名稱與「再拔一個」。 */
+function pluck(): void {
+  // 只有準備狀態（盆子在搖）能拔；動畫中或已拔出都忽略
+  if (rolling || !stageEl || !stageEl.classList.contains("ready") || !pikminEl || !nameEl || !drawBtnEl)
+    return;
   rolling = true;
-  drawBtnEl.disabled = true;
 
-  const card = backdrop!.querySelector(".pikmin-card")!;
-  card.classList.remove("settled");
+  const p = pick();
+  const url = spriteUrl(p.key);
+  pikminEl.innerHTML = url
+    ? `<img src="${url}" alt="${p.name}" />`
+    : `<span class="pikmin-emoji-fallback">${p.emoji}</span>`;
+  nameEl.textContent = "用力拔…";
 
-  let ticks = 0;
-  const total = 16;
-  const timer = setInterval(() => {
-    show(pick(), false);
-    ticks++;
-    if (ticks >= total) {
-      clearInterval(timer);
-      show(pick(), true);
-      card.classList.add("settled");
-      rolling = false;
-      drawBtnEl!.disabled = false;
-      drawBtnEl!.textContent = "再抽一個";
-    }
-  }, 70);
+  // 離開準備狀態 → reflow → 加 plucking：皮克敏冒出與盆子往左滾「同時」開始
+  stageEl.classList.remove("ready", "plucking");
+  void stageEl.offsetWidth;
+  stageEl.classList.add("plucking");
+
+  window.setTimeout(() => {
+    nameEl!.textContent = `得到了：${p.name}！`;
+    rolling = false;
+    drawBtnEl!.style.visibility = "visible"; // 顯示「再拔一個」→ 回到準備狀態
+    drawBtnEl!.textContent = "再拔一個";
+  }, PLUCK_MS);
 }
 
 function pick(): Pikmin {
   return PIKMIN[Math.floor(Math.random() * PIKMIN.length)];
-}
-
-function show(p: Pikmin, final: boolean): void {
-  if (!displayEl || !nameEl) return;
-  const url = spriteUrl(p.key);
-  displayEl.innerHTML = url
-    ? `<img class="pikmin-sprite" src="${url}" alt="${p.name}" />`
-    : `<span class="pikmin-emoji-fallback">${p.emoji}</span>`;
-  nameEl.textContent = final ? `抽到了：${p.name}！` : p.name;
 }
