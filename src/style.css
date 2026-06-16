@@ -509,7 +509,12 @@ body.menu-collapsed #pane-resizer {
   bottom: 58px;
   transform: translateX(-50%);
   transform-origin: 50% 100%; /* 以底部為原點，縮放時像從盆口長出來 */
+  /* 固定寬高並置中內容：置中不依賴圖片載入，避免圖片載入前寬度為 0 導致先偏右再置中 */
+  width: 180px;
   height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   z-index: 1; /* 在盆子後面，看起來像從盆裡冒出來 */
 }
 
