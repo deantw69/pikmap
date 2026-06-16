@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 // CSS 副作用匯入（由 Vite 處理；這行只是讓 TS 編輯器不報錯）
 declare module "*.css";
 

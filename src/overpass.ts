@@ -24,8 +24,11 @@ import { getBboxString } from "./map";
  *   // print results
  *   out geom;
  */
-export function buildQuery(categories: QueryCategory[]): string {
-  // 收集所有用到的地區範圍，去重後在開頭宣告為具名集合
+/**
+ * 組出 union 的本體與所需的 area 宣告。
+ * bboxToken 是要塞進每行 nwr 的範圍：一般查詢用樣板 "{{bbox}}"，純點掃描用實際的 "s,w,n,e"。
+ */
+function buildUnion(categories: QueryCategory[], bboxToken: string): { areaDecls: string; body: string } {
   const scopes = new Map<string, string>(); // ISO 代碼 -> set 名稱
   const lines: string[] = [];
 
@@ -37,7 +40,7 @@ export function buildQuery(categories: QueryCategory[]): string {
       scopeSuffix = `(area.${setName})`;
     }
     for (const f of cat.filters) {
-      lines.push(`  nwr${f}${scopeSuffix}({{bbox}});`);
+      lines.push(`  nwr${f}${scopeSuffix}(${bboxToken});`);
     }
   }
 
@@ -45,13 +48,31 @@ export function buildQuery(categories: QueryCategory[]): string {
     .map(([iso, set]) => `area["ISO3166-1"="${iso}"]->.${set};`)
     .join("\n");
 
+  return { areaDecls, body: lines.join("\n") };
+}
+
+export function buildQuery(categories: QueryCategory[]): string {
+  const { areaDecls, body } = buildUnion(categories, "{{bbox}}");
   return `[out:json][timeout:25];
 ${areaDecls ? areaDecls + "\n" : ""}// gather results
 (
-${lines.join("\n")}
+${body}
 );
 // print results
 out geom;`;
+}
+
+/**
+ * 純點模式用：全分類 union、限定在指定 bbox（"south,west,north,east"）、用 out center 輕量輸出。
+ * 一個 S2 L14 塊一次查詢，範圍小、不會 timeout。
+ */
+export function buildScanQuery(categories: QueryCategory[], bbox: string): string {
+  const { areaDecls, body } = buildUnion(categories, bbox);
+  return `[out:json][timeout:60];
+${areaDecls ? areaDecls + "\n" : ""}(
+${body}
+);
+out center;`;
 }
 
 /**

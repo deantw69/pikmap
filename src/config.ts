@@ -44,6 +44,20 @@ export const S2_GRID_LEVEL = 17;
 /** 縮放到此 zoom（含）以上才顯示 S2 網格 */
 export const GRID_MIN_ZOOM = 17;
 
+// ── 純點模式（獨立模式：找出一個 S2 格內只含單一分類的「純點格」）──
+/** 掃描／快取單位的 S2 level（每塊含 64 個 L17 子格，bbox 夠小不會 timeout） */
+export const PURE_SCAN_LEVEL = 14;
+/** 判純單位的 S2 level，沿用既有網格（level 17） */
+export const PURE_CELL_LEVEL = S2_GRID_LEVEL;
+/** 純點格最小顯示 zoom；低於此只提示「放大以顯示」，且不允許掃描（< 14 不顯示） */
+export const PURE_MIN_ZOOM = 14;
+/** LOD 門檻：此 zoom（含）以上改畫各點小 icon（實際位置），以下（14~17）畫色塊 */
+export const PURE_ICON_ZOOM = 18;
+/** 純點快取有效期（毫秒）：30 天 */
+export const PURE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** 一次掃描的未快取塊數上限，超過先跳確認 */
+export const PURE_SCAN_CONFIRM = 60;
+
 /**
  * 可勾選的地點類型（靈感來自 Decor Pikmin 的裝飾分類）。
  * 每個分類對應一個 Overpass 過濾條件，勾選後會以 nwr<filter>({{bbox}}) 加入查詢。
@@ -130,3 +144,24 @@ export const CATEGORIES: QueryCategory[] = [
 
 /** 預設勾選的分類 id */
 export const DEFAULT_SELECTED = [];
+
+/**
+ * 純點模式「最精確一類」的優先序（高→低）。
+ * 一個地點命中多個分類時，取在此清單中最靠前者；未列出者以 CATEGORIES 順序墊底。
+ * 規則來源：料理細類 > 餐廳/漢堡店；咖啡廳不讓給料理細類；麵包/甜點 > 咖啡廳；飯店 > 餐廳；
+ * 罕見跨類用網域 fallback（交通 > 自然 > 觀光/休閒 > 公園 > 購物 > 生活機能）。
+ */
+export const CATEGORY_PRIORITY: string[] = [
+  "bakery", "sweets", // 勝過咖啡廳
+  "cafe", // 勝過料理細類
+  "sushi", "ramen", "korean", "curry", "mexican", "italian", // 勝過餐廳/漢堡店
+  "hotel", // 勝過餐廳
+  "restaurant", "fast_food",
+  // 以下為罕見跨類的 fallback 順序
+  "airport", "station", "bus_stop", "bridge",
+  "water", "forest", "beach", "peak",
+  "zoo", "theme_park", "cinema", "stadium", "art_gallery", "library", "university", "worship",
+  "park",
+  "convenience", "supermarket", "makeup", "clothes", "hairdresser", "appliance", "diy", "laundry", "stationery",
+  "pharmacy", "post_office",
+];

@@ -9,6 +9,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { FeatureCollection } from "geojson";
 import { MAP_DEFAULT, MARKER_COLOR, type QueryCategory } from "./config";
+import { parseFilter, matchesFilterSet, type FilterConds } from "./classify";
 import { initZoomDisplay, initS2Grid } from "./grid";
 import { initRangeCircle } from "./circle";
 import { initSearch } from "./search";
@@ -59,6 +60,11 @@ export function initMap(el: HTMLElement): L.Map {
 /** 版面改變後（例如收合選單）讓 Leaflet 重新計算尺寸並補上圖磚。 */
 export function refreshSize(): void {
   map.invalidateSize();
+}
+
+/** 取得 Leaflet map 實例（給純點模式等其他模組掛圖層用）。 */
+export function getMap(): L.Map {
+  return map;
 }
 
 /** 回傳目前視野的 Overpass bbox 字串：south,west,north,east。 */
@@ -165,29 +171,7 @@ export interface ShowResultData {
 interface ParsedCategory {
   color: string;
   /** filters 解析後：每個 filter 是一組必須全部相符的 [key, value] 條件（AND）；多個 filter 之間為 OR */
-  filters: [string, string][][];
-}
-
-/** 把 ["amenity"="restaurant"]["cuisine"="sushi"] 這種字串解析成 [[amenity,restaurant],[cuisine,sushi]]。 */
-function parseFilter(filter: string): [string, string][] {
-  const pairs: [string, string][] = [];
-  const re = /\["([^"]+)"="([^"]+)"\]/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(filter)) !== null) pairs.push([m[1], m[2]]);
-  return pairs;
-}
-
-/** 判斷某 feature 的 tags 是否符合某分類（任一 filter 的所有條件都相符）。 */
-function featureMatches(props: Record<string, unknown>, parsed: ParsedCategory): boolean {
-  return parsed.filters.some((conds) =>
-    conds.every(([k, v]) => {
-      const tag = props[k];
-      if (tag === undefined || tag === null) return false;
-      const s = String(tag);
-      // 處理 OSM 以分號分隔的多值（例如 cuisine=japanese;sushi）
-      return s === v || s.split(";").includes(v);
-    }),
-  );
+  filters: FilterConds[];
 }
 
 /**
@@ -213,7 +197,7 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
   // 只選一種分類時，回傳的結果視為全屬於該分類。
   const categoryIndex = (props: Record<string, unknown>): number => {
     for (let i = 0; i < parsed.length; i++) {
-      if (featureMatches(props, parsed[i])) return i;
+      if (matchesFilterSet(props, parsed[i].filters)) return i;
     }
     return styled.length === 1 ? 0 : -1;
   };
@@ -286,7 +270,7 @@ function tagsPopup(tags: Record<string, unknown>): string {
 }
 
 /** 產生顯示 emoji 的地圖標記圖示（圓底、分類色外框）。 */
-function emojiIcon(emoji: string, color: string): L.DivIcon {
+export function emojiIcon(emoji: string, color: string): L.DivIcon {
   return L.divIcon({
     className: "emoji-marker",
     html: `<span class="emoji-pin" style="--pin:${color}">${emoji}</span>`,
@@ -297,7 +281,7 @@ function emojiIcon(emoji: string, color: string): L.DivIcon {
 }
 
 /** 從 OSM tags 取一個可讀名稱。 */
-function featureName(tags: Record<string, unknown>): string {
+export function featureName(tags: Record<string, unknown>): string {
   for (const k of ["name:zh", "name:zh-Hant", "name", "name:en", "brand"]) {
     const v = tags[k];
     if (typeof v === "string" && v.trim()) return v;

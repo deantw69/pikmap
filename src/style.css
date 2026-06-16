@@ -401,6 +401,122 @@ body.menu-collapsed #pane-resizer {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+/* ── 模式切換（一般 / 純點）── */
+#mode-switch {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 3px;
+  background: #e7ece9;
+  border-radius: 8px;
+}
+
+.mode-btn {
+  flex: 1 1 0;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  padding: 7px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a554e;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: #fff;
+  color: var(--brand-dark);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 純點模式：隱藏一般模式內容與頂部「開始查詢」鈕，顯示純點控制項 */
+#pure-controls {
+  display: none;
+}
+
+body.pure-mode #normal-mode,
+body.pure-mode #run-btn {
+  display: none;
+}
+
+body.pure-mode #pure-controls {
+  display: block;
+}
+
+/* 純點控制項 */
+.pure-toolbar {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.pure-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-dark);
+  cursor: pointer;
+}
+
+.pure-btn:hover {
+  border-color: var(--brand);
+}
+
+.pure-btn.pure-primary {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+.pure-btn.pure-primary:hover {
+  background: var(--brand-dark);
+}
+
+.pure-btn.link-btn {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-weight: 400;
+}
+
+.pure-progress {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6b756f;
+  min-height: 16px;
+}
+
+/* 純點格中心的分類 emoji：純文字、無白底圓框（加陰影在色塊上仍清楚） */
+.leaflet-div-icon.pure-cell-label {
+  background: transparent;
+  border: none;
+  pointer-events: none; /* 點擊穿透到底下色塊，由色塊彈出分類 */
+}
+
+.pure-cell-label span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9), 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+/* 純點模式：地圖左下角「放大以顯示」提示 */
+.pure-hint {
+  background: rgba(29, 43, 36, 0.88);
+  color: #f3f6f4;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
 /* ── 查詢面板 ── */
 .panel-title {
   margin: 0 0 4px;

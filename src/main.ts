@@ -6,6 +6,7 @@ import { initMap, showResult, refreshSize } from "./map";
 import { initMenu, getSelectedCategories } from "./menu";
 import { initLocate } from "./location";
 import { initResults, renderResults, refreshResults } from "./results";
+import { initPure, setPureActive } from "./pure";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
 import { load, save } from "./storage";
@@ -20,6 +21,9 @@ const paneArrow = document.getElementById("pane-arrow") as HTMLButtonElement;
 const paneResizer = document.getElementById("pane-resizer")!;
 const queryPane = document.getElementById("query-pane")!;
 const resultsList = document.getElementById("results-list")!;
+const pureControls = document.getElementById("pure-controls")!;
+const modeNormalBtn = document.getElementById("mode-normal") as HTMLButtonElement;
+const modePureBtn = document.getElementById("mode-pure") as HTMLButtonElement;
 
 const map = initMap(mapPane);
 initLocate(map, refreshResults); // 左上角定位鈕；定位更新後重排結果距離
@@ -94,7 +98,31 @@ function refreshPreview() {
 initMenu(categoryContainer, refreshPreview);
 refreshPreview();
 
+// 純點模式（獨立模式）：仍在開發中、且掃描會大量打 Overpass，
+// 因此只在 dev（pnpm dev）顯示，正式版（build 後）隱藏整個模式切換器。
+const modeSwitch = document.getElementById("mode-switch")!;
+
+function setMode(pure: boolean) {
+  document.body.classList.toggle("pure-mode", pure);
+  modeNormalBtn.classList.toggle("active", !pure);
+  modePureBtn.classList.toggle("active", pure);
+  modeNormalBtn.setAttribute("aria-selected", String(!pure));
+  modePureBtn.setAttribute("aria-selected", String(pure));
+  setStatus("");
+  setPureActive(pure);
+  requestAnimationFrame(() => refreshSize());
+}
+
+if (import.meta.env.DEV) {
+  initPure(pureControls, setStatus);
+  modeNormalBtn.addEventListener("click", () => setMode(false));
+  modePureBtn.addEventListener("click", () => setMode(true));
+} else {
+  modeSwitch.style.display = "none"; // 正式版隱藏純點模式
+}
+
 async function onRun() {
+  if (document.body.classList.contains("pure-mode")) return; // 純點模式不跑一般查詢
   const categories = getSelectedCategories();
   if (!categories.length) {
     setStatus("請至少勾選一個類型", true);
