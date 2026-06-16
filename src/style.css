@@ -64,8 +64,25 @@ body,
   opacity: 0.7;
 }
 
-#run-btn {
+/* 抽皮克敏：靠右起始的次要按鈕，把它與後面的開始查詢/狀態推到右側 */
+#draw-btn {
   margin-left: auto;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--bar-fg);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#draw-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#run-btn {
   background: var(--brand);
   color: #fff;
   border: none;
@@ -399,6 +416,119 @@ body.menu-collapsed #pane-resizer {
   border: 3px solid var(--brand);
   border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ── 抽皮克敏小視窗 ── */
+.pikmin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 18, 14, 0.55);
+}
+
+.pikmin-backdrop.show {
+  display: flex;
+}
+
+.pikmin-card {
+  position: relative;
+  width: min(86vw, 320px);
+  padding: 28px 24px 24px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.pikmin-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #9aa3a0;
+  cursor: pointer;
+}
+
+.pikmin-close:hover {
+  color: #555;
+}
+
+.pikmin-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  margin: 4px auto 14px;
+}
+
+/* 像素圖：放大時保持鋸齒（不要模糊），維持像素風 */
+.pikmin-sprite {
+  height: 140px;
+  width: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25));
+}
+
+.pikmin-emoji-fallback {
+  font-size: 72px;
+  line-height: 1;
+}
+
+.pikmin-card.settled .pikmin-display {
+  animation: pikmin-pop 0.4s ease;
+}
+
+@keyframes pikmin-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pikmin-card.settled .pikmin-emoji {
+    animation: none;
+  }
+}
+
+.pikmin-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  margin-bottom: 16px;
+  min-height: 24px;
+}
+
+.pikmin-draw {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--brand);
+  cursor: pointer;
+}
+
+.pikmin-draw:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.pikmin-draw:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 /* ── 模式切換（一般 / 純點）── */

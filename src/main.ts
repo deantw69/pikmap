@@ -7,6 +7,7 @@ import { initMenu, getSelectedCategories } from "./menu";
 import { initLocate } from "./location";
 import { initResults, renderResults, refreshResults } from "./results";
 import { initPure, setPureActive } from "./pure";
+import { initPikminDraw } from "./pikmin";
 import { runQuery, buildQuery } from "./overpass";
 import { MARKER_PALETTE } from "./config";
 import { load, save } from "./storage";
@@ -28,6 +29,13 @@ const modePureBtn = document.getElementById("mode-pure") as HTMLButtonElement;
 const map = initMap(mapPane);
 initLocate(map, refreshResults); // 左上角定位鈕；定位更新後重排結果距離
 initResults(resultsList);
+// 趣味：抽皮克敏 — 仍在開發中，只在 dev 顯示，正式版隱藏按鈕
+const drawBtn = document.getElementById("draw-btn") as HTMLButtonElement;
+if (import.meta.env.DEV) {
+  initPikminDraw(drawBtn);
+} else {
+  drawBtn.style.display = "none";
+}
 
 // 還原上次調好的選單寬度（桌機）；手機為懸浮固定寬度，不受此影響
 const savedWidth = load<number | null>("menuWidth", null);
