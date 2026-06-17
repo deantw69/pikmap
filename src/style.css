@@ -601,13 +601,7 @@ body.menu-collapsed #pane-resizer {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pikmin-stage.ready .pluck-pot,
-  .pikmin-stage.plucking .pluck-pikmin,
-  .pikmin-stage.plucking .pluck-pot {
-    animation: none;
-  }
-}
+/* 抽皮克敏是使用者主動點按鈕觸發的趣味動畫，刻意不受系統「減少動態效果」影響，一律播放。 */
 
 .pikmin-name {
   font-size: 18px;
