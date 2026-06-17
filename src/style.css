@@ -567,10 +567,10 @@ body.menu-collapsed #pane-resizer {
 
 @keyframes pluck-rise {
   0% {
-    transform: translate(-50%, 30%) scale(0.25);
+    transform: translate(-50%, 30%) scale(0.02);
     opacity: 0;
   }
-  25% {
+  50% {
     opacity: 1;
   }
   70% {
