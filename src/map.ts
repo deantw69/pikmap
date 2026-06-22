@@ -210,6 +210,9 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
   const items: ResultItem[] = [];
   const features = geojson.features ?? [];
 
+  // 所有多邊形外環，用來判斷某點是否落在水面內（剔除大河中央的接縫點）。
+  const polyRings = collectPolygonRings(features);
+
   for (const feature of features) {
     const tags = (feature.properties ?? {}) as Record<string, unknown>;
     const idx = categoryIndex(tags);
@@ -226,7 +229,12 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
     } else {
       const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
       shape.addTo(areaLayer);
-      const cellPts = lineCellPoints(geom, S2_GRID_LEVEL);
+      // 大河（waterway=river）以中心線表示，落在寬水面正中央，沿線放 icon 沒意義 → 只畫輪廓、不放任何 icon。
+      // 細河道（waterway=stream）才沿線放整排水邊 icon；湖沼面沿岸邊放。
+      const isLine = geom?.type === "LineString" || geom?.type === "MultiLineString";
+      if (isLine && tags["waterway"] === "river") continue;
+      // 面（河面／湖沼）沿「岸邊」放 icon、線（河道）沿線放 icon。
+      const cellPts = edgeCellPoints(geom, S2_GRID_LEVEL, polyRings);
       pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
     }
 
@@ -289,31 +297,59 @@ export function emojiIcon(emoji: string, color: string): L.DivIcon {
 }
 
 /**
- * 線狀幾何「沿線經過的每個 S2 cell」各取一個落在線上的點。
- * 沿線以小於一格的間距取樣，每進入新的 cell 就記一個點；非線狀回 []。
+ * 沿幾何邊緣每個 S2 cell 各取一個點：
+ * - 線（LineString）→ 沿線；面（Polygon）→ 沿外環＋內環（岸邊）。
+ * 大河面只在兩岸放、中間淨空；細河道兩岸貼近，看起來就是一排水邊 icon。非線非面回 []。
  */
-function lineCellPoints(geom: Geometry | null | undefined, level: number): L.LatLng[] {
+function edgeCellPoints(
+  geom: Geometry | null | undefined,
+  level: number,
+  polyRings?: number[][][],
+): L.LatLng[] {
+  const isPoly = geom?.type === "Polygon" || geom?.type === "MultiPolygon";
   const lines: number[][][] =
     geom?.type === "LineString"
       ? [geom.coordinates]
       : geom?.type === "MultiLineString"
         ? geom.coordinates
-        : [];
+        : geom?.type === "Polygon"
+          ? geom.coordinates
+          : geom?.type === "MultiPolygon"
+            ? geom.coordinates.flat()
+            : [];
 
   const out: L.LatLng[] = [];
   const seen = new Set<string>();
   const STEP_M = 30; // 取樣間距，小於一格(~80m)以免漏格
   const CAP = 500; // 安全上限，避免極長線爆量
+  const OFFSET = 12 / 111320; // 兩側測試偏移量（約 12m，換算成緯度度數）
 
   for (const line of lines) {
     for (let i = 1; i < line.length; i++) {
       const a = line[i - 1];
       const b = line[i];
+      // 面：算此邊的單位法向量，用來把取樣點往兩側偏移，判斷是否為水中接縫。
+      const lat0 = (a[1] + b[1]) / 2;
+      const cos = Math.cos((lat0 * Math.PI) / 180) || 1;
+      let ex = (b[0] - a[0]) * cos;
+      let ey = b[1] - a[1];
+      const len = Math.hypot(ex, ey) || 1;
+      ex /= len;
+      ey /= len;
+      const offLng = (-ey * OFFSET) / cos; // 法向量 (-ey, ex) 換回經緯度偏移
+      const offLat = ex * OFFSET;
+
       const n = Math.max(1, Math.ceil(L.latLng(a[1], a[0]).distanceTo(L.latLng(b[1], b[0])) / STEP_M));
       for (let k = 0; k <= n; k++) {
         const t = k / n;
         const lat = a[1] + (b[1] - a[1]) * t;
         const lng = a[0] + (b[0] - a[0]) * t;
+        // 面狀：兩側都還在水面內 → 河中央接縫，丟棄；只要一側是陸地才是真正岸邊。
+        if (isPoly && polyRings) {
+          const s1 = pointInRings(lng + offLng, lat + offLat, polyRings);
+          const s2 = pointInRings(lng - offLng, lat - offLat, polyRings);
+          if (s1 && s2) continue;
+        }
         const key = S2.S2Cell.FromLatLng({ lat, lng }, level).toHilbertQuadkey();
         if (!seen.has(key)) {
           seen.add(key);
@@ -324,6 +360,33 @@ function lineCellPoints(geom: Geometry | null | undefined, level: number): L.Lat
     }
   }
   return out;
+}
+
+/** 收集所有多邊形的外環座標（[lng,lat][]），供點是否落在面內的判斷使用。 */
+function collectPolygonRings(features: FeatureCollection["features"]): number[][][] {
+  const rings: number[][][] = [];
+  for (const f of features) {
+    const g = f.geometry;
+    if (g?.type === "Polygon") rings.push(g.coordinates[0]);
+    else if (g?.type === "MultiPolygon") for (const poly of g.coordinates) rings.push(poly[0]);
+  }
+  return rings;
+}
+
+/** 射線法：點 [lng,lat] 是否落在任一多邊形外環內。 */
+function pointInRings(lng: number, lat: number, rings: number[][][]): boolean {
+  for (const ring of rings) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0];
+      const yi = ring[i][1];
+      const xj = ring[j][0];
+      const yj = ring[j][1];
+      if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
 }
 
 /** 從 OSM tags 取一個可讀名稱。 */
