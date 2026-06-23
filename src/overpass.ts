@@ -51,7 +51,24 @@ function buildUnion(categories: QueryCategory[], bboxToken: string): { areaDecls
   return { areaDecls, body: lines.join("\n") };
 }
 
-export function buildQuery(categories: QueryCategory[]): string {
+/** 雷達圓查詢範圍：圓心經緯度與半徑（公尺）。 */
+export type Scope = { lat: number; lng: number; radiusM: number };
+
+export function buildQuery(categories: QueryCategory[], scope?: Scope | null): string {
+  if (scope) {
+    // 雷達圓模式：用 around 限定在圓範圍內，不受目前視野限制。
+    // 幾何不以 {{bbox}} 裁切（圓可超出畫面），故用 out geom（無範圍）。
+    const token = `around:${scope.radiusM},${scope.lat.toFixed(6)},${scope.lng.toFixed(6)}`;
+    const { areaDecls, body } = buildUnion(categories, token);
+    return `[out:json][timeout:25];
+${areaDecls ? areaDecls + "\n" : ""}// gather results
+(
+${body}
+);
+// print results
+out geom;`;
+  }
+
   const { areaDecls, body } = buildUnion(categories, "{{bbox}}");
   // out geom({{bbox}}) 會把幾何裁切到目前視野：長河流等線狀資料只會畫出視野內那一段，
   // 不會把整條 way（源頭到出海口）都回傳，資料量與沿線標記都因此大減。
@@ -108,12 +125,15 @@ function categoriesAtLevel(categories: QueryCategory[], level: number): QueryCat
  * 一般查詢（含漸進降級）：先用完整 filters；若逾時／伺服器忙碌而失敗，
  * 對有設 fallbackFilters 的分類逐步改用更輕量的條件再重試（每一階都會輪流試各鏡像）。
  */
-export async function runQueryForCategories(categories: QueryCategory[]): Promise<FeatureCollection> {
+export async function runQueryForCategories(
+  categories: QueryCategory[],
+  scope?: Scope | null,
+): Promise<FeatureCollection> {
   const maxLevel = maxFallbackLevel(categories);
   let lastErr: Error = new Error("查詢失敗");
   for (let level = 0; level <= maxLevel; level++) {
     try {
-      return await runQuery(buildQuery(categoriesAtLevel(categories, level)));
+      return await runQuery(buildQuery(categoriesAtLevel(categories, level), scope));
     } catch (err) {
       lastErr = err as Error; // 還有更輕的層級就繼續降級重試，否則拋出
     }

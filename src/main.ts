@@ -9,6 +9,7 @@ import { initResults, renderResults, refreshResults } from "./results";
 import { initPure, setPureActive } from "./pure";
 import { initPikminDraw } from "./pikmin";
 import { runQueryForCategories, buildQuery } from "./overpass";
+import { getRadarScope } from "./radar";
 import { MARKER_PALETTE } from "./config";
 import { load, save } from "./storage";
 
@@ -113,7 +114,7 @@ function setStatus(msg: string, isError = false) {
 function refreshPreview() {
   const categories = getSelectedCategories();
   previewEl.textContent = categories.length
-    ? buildQuery(categories)
+    ? buildQuery(categories, getRadarScope())
     : "（尚未選擇任何類型）";
 }
 
@@ -156,11 +157,12 @@ async function onRun() {
     color: MARKER_PALETTE[i % MARKER_PALETTE.length],
   }));
 
+  const scope = getRadarScope(); // 雷達圓開啟時改用圓範圍（around）查詢
   runBtn.disabled = true;
   runBtnPanel.disabled = true;
-  setStatus("查詢中…");
+  setStatus(scope ? "查詢中…（10km 範圍）" : "查詢中…");
   try {
-    const geojson = await runQueryForCategories(categories);
+    const geojson = await runQueryForCategories(categories, scope);
     const data = showResult(geojson, styled);
     renderResults(data);
     setStatus(data.count > 0 ? `完成：${data.count} 筆結果` : "完成：沒有符合的結果");
