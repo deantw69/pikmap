@@ -44,6 +44,7 @@ pnpm preview    # 預覽正式版
 - **地圖疊加層**（皆在 `map.ts` initMap 時掛載）：
   - `search.ts` — 左上角地址搜尋，用 Nominatim 地理編碼，含 debounce + 序號（`seq`）丟棄過期結果的自動完成下拉。
   - `grid.ts` — 右上角即時 zoom level；zoom ≥ 17 時用 BFS 從中心 cell 擴張畫出 S2 level-17 網格（Pokémon GO / Pikmin Bloom 慣用），上限 `MAX_CELLS` 避免暴衝。
+  - `measure.ts` — 右上角「量距離」切換鈕（群聚鈕下方）；開啟後逐點點按連成折線、各頂點顯示累計距離，雙擊或 Esc 結束該段，再按一次清除關閉。
 
 ### 外部服務
 

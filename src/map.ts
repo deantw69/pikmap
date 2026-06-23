@@ -13,6 +13,7 @@ import { MAP_DEFAULT, MARKER_COLOR, S2_GRID_LEVEL, type QueryCategory } from "./
 import { parseFilter, matchesFilterSet, type FilterConds } from "./classify";
 import { initZoomDisplay, initS2Grid } from "./grid";
 import { initRangeCircle } from "./circle";
+import { initMeasure } from "./measure";
 import { initSearch } from "./search";
 import { load, save } from "./storage";
 
@@ -47,6 +48,7 @@ export function initMap(el: HTMLElement): L.Map {
   initZoomDisplay(map); // 右上角 zoom level
   initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
   initClusterToggle(); // 群聚顯示開關
+  initMeasure(map); // 量距離工具
   initS2Grid(map); // zoom ≥ 17 顯示 S2 網格
 
   // 每次平移／縮放後記住目前視野
