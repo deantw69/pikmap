@@ -231,12 +231,12 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
       const [lng, lat] = geom.coordinates;
       pts = [L.latLng(lat, lng)];
     } else {
-      const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
-      shape.addTo(areaLayer);
-      // 大河（waterway=river）以中心線表示，落在寬水面正中央，沿線放 icon 沒意義 → 只畫輪廓、不放任何 icon。
+      // 大河（waterway=river）以中心線表示，落在寬水面正中央 → 中心線本身與 icon 都不畫。
       // 細河道（waterway=stream）才沿線放整排水邊 icon；湖沼面沿岸邊放。
       const isLine = geom?.type === "LineString" || geom?.type === "MultiLineString";
       if (isLine && tags["waterway"] === "river") continue;
+      const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
+      shape.addTo(areaLayer);
       // 面（河面／湖沼）沿「岸邊」放 icon、線（河道）沿線放 icon。
       const cellPts = edgeCellPoints(geom, S2_GRID_LEVEL, polyRings);
       pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
