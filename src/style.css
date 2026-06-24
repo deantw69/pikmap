@@ -1009,6 +1009,189 @@ body.pure-mode #pure-controls {
   cursor: crosshair;
 }
 
+/* 已存結果：書籤切換鈕（排在量距鈕下方，白底、開啟時轉品牌綠） */
+.saved-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.saved-toggle {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #9aa3a0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.saved-toggle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.saved-toggle:hover {
+  background: #f0f4f2;
+}
+
+.saved-toggle.active {
+  color: var(--brand);
+}
+
+/* 浮出面板：預設隱藏，開啟時顯示在鈕下方 */
+.saved-panel {
+  display: none;
+  width: 220px;
+  max-height: 50vh;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+}
+
+.saved-panel.open {
+  display: block;
+}
+
+.saved-save {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px dashed #c7cdca;
+  border-radius: 6px;
+  background: #f7faf9;
+  color: #333;
+  font: inherit;
+  cursor: pointer;
+}
+
+.saved-save:hover {
+  background: #eef4f2;
+}
+
+.saved-empty {
+  margin: 8px 2px 2px;
+  color: #999;
+  text-align: center;
+}
+
+.saved-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.saved-name {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 7px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f6f5;
+  font: inherit;
+  color: #222;
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-name:hover {
+  background: #e7efec;
+}
+
+.saved-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-count {
+  flex: 0 0 auto;
+  color: #777;
+  font-size: 12px;
+}
+
+.saved-rename,
+.saved-del {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #9aa3a0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.saved-rename:hover {
+  background: #eef4f2;
+  color: #333;
+}
+
+.saved-del:hover {
+  background: #fdecec;
+  color: #d33;
+}
+
+/* 命名 / 改名就地編輯列 */
+.saved-editor {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.saved-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid #c7cdca;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.saved-ok,
+.saved-cancel {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f6f5;
+  cursor: pointer;
+}
+
+.saved-ok {
+  color: var(--brand);
+}
+
+.saved-cancel {
+  color: #9aa3a0;
+}
+
+.saved-ok:hover,
+.saved-cancel:hover {
+  background: #e7efec;
+}
+
 /* 各段累計距離標籤 */
 .leaflet-div-icon.measure-label {
   width: auto;

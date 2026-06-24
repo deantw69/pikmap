@@ -2,7 +2,9 @@
  * 進入點：串接 menu / map / overpass，綁定 Run 按鈕。
  */
 import "./style.css";
-import { initMap, showResult, refreshSize } from "./map";
+import type { FeatureCollection } from "geojson";
+import { initMap, showResult, refreshSize, type StyledCategory } from "./map";
+import { initSaved } from "./saved";
 import { initMenu, getSelectedCategories } from "./menu";
 import { initLocate } from "./location";
 import { initResults, renderResults, refreshResults } from "./results";
@@ -32,6 +34,19 @@ const modePureBtn = document.getElementById("mode-pure") as HTMLButtonElement;
 const map = initMap(mapPane);
 initLocate(map, refreshResults); // 左上角定位鈕；定位更新後重排結果距離
 initResults(resultsList);
+
+// 最近一次成功查詢（或套用）的結果，供「已存結果」儲存使用
+let lastResult: { geojson: FeatureCollection; styled: StyledCategory[] } | null = null;
+initSaved(map, {
+  getCurrent: () => lastResult,
+  apply: ({ geojson, styled }) => {
+    lastResult = { geojson, styled }; // 套用後也視為目前結果
+    const data = showResult(geojson, styled);
+    renderResults(data);
+    setStatus(`已套用：${data.count} 筆結果`);
+  },
+  toast: setStatus,
+});
 // 趣味：抽皮克敏 — 所有人可見
 const drawBtn = document.getElementById("draw-btn") as HTMLButtonElement;
 initPikminDraw(drawBtn);
@@ -163,6 +178,7 @@ async function onRun() {
   setStatus(scope ? "查詢中…（10km 範圍）" : "查詢中…");
   try {
     const geojson = await runQueryForCategories(categories, scope);
+    lastResult = { geojson, styled }; // 記住本次結果，供「已存結果」儲存
     const data = showResult(geojson, styled);
     renderResults(data);
     setStatus(data.count > 0 ? `完成：${data.count} 筆結果` : "完成：沒有符合的結果");

@@ -43,12 +43,13 @@ pnpm preview    # 預覽正式版
 
 - **狀態持久化**：`storage.ts` 以 `pikmap.` 前綴存 localStorage，全包 try/catch（無痕模式安全）。記住地圖視野（`view`）與選單勾選（`selected`），下次開啟還原。
 
-- **地圖疊加層**（皆在 `map.ts` initMap 時掛載）：
+- **地圖疊加層**（除 `saved.ts` 外皆在 `map.ts` initMap 時掛載）：
   - `search.ts` — 左上角地址搜尋，用 Nominatim 地理編碼，含 debounce + 序號（`seq`）丟棄過期結果的自動完成下拉。
   - `grid.ts` — 右上角即時 zoom level；zoom ≥ 17 時用 BFS 從中心 cell 擴張畫出 S2 level-17 網格（Pokémon GO / Pikmin Bloom 慣用），上限 `MAX_CELLS` 避免暴衝。
   - `measure.ts` — 右上角「量距離」切換鈕（群聚鈕下方）；開啟後逐點點按連成折線、各頂點顯示累計距離，雙擊或 Esc 結束該段，再按一次清除關閉。
   - `circle.ts` — 右上角可拖曳的 100m 範圍圓切換鈕；會 `clampIntoView` 夾在畫面內。
   - `radar.ts` — 右上角可拖曳的 10km 雷達圓切換鈕（藍色，100m 圓鈕下方）；**不夾限視野、可超出畫面**。開啟時 `getRadarScope()` 回傳圓心與半徑，`main.ts` 的 Run 改用此圓範圍查詢（見下方 `around` 範圍）；關閉則恢復用畫面視野。
+  - `saved.ts` — 右上角「已存結果」書籤鈕（量距鈕下方），點開浮出面板。把一次查詢的快照（GeoJSON + 分類顏色）存進 localStorage（key `savedSearches`，沿用 `storage.ts`），可存多組、命名、改名、刪除；點清單某筆即用 `showResult` 重畫，**完全不再呼叫 Overpass API**。由 `main.ts`（非 `map.ts`）掛載，因需主線的 `lastResult` / `showResult` / `renderResults`。**只存分類 id + 顏色**，套用時用 `CATEGORIES` 依 id 還原 `StyledCategory`（找不到的 id 略過）。
 
 ### 外部服務
 
