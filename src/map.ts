@@ -16,6 +16,7 @@ import { initRangeCircle } from "./circle";
 import { initRadar } from "./radar";
 import { initMeasure } from "./measure";
 import { initSearch } from "./search";
+import { initHelp } from "./help";
 import { load, save } from "./storage";
 
 interface SavedView {
@@ -46,6 +47,7 @@ export function initMap(el: HTMLElement): L.Map {
   }).addTo(map);
 
   initSearch(map); // 左上角地址搜尋框
+  initHelp(map); // 右上角「？」功能說明
   initZoomDisplay(map); // 右上角 zoom level
   initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
   initRadar(map); // 100m 圓下方：可拖曳的 10km 雷達圓切換鈕（開啟後 Run 改查此範圍）
