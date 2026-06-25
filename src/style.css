@@ -1369,6 +1369,32 @@ body.pure-mode #pure-controls {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+/* 彈窗內「複製地址／座標」鈕 */
+.popup-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 3px 8px;
+  border: 1px solid #cdd5d0;
+  border-radius: 6px;
+  background: #f3f6f4;
+  color: #2b7a4b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.popup-copy:hover {
+  background: #e6efe9;
+}
+
+.popup-copy.copied {
+  background: #2b7a4b;
+  border-color: #2b7a4b;
+  color: #fff;
+}
+
 /* 圖例的各類數量 */
 .legend-count {
   margin-left: 6px;

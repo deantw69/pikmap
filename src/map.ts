@@ -48,6 +48,7 @@ export function initMap(el: HTMLElement): L.Map {
 
   initSearch(map); // 左上角地址搜尋框
   initHelp(map); // 右上角「？」功能說明
+  initPopupCopy(map); // 彈窗內「複製地址／座標」鈕
   initZoomDisplay(map); // 右上角 zoom level
   initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
   initRadar(map); // 100m 圓下方：可拖曳的 10km 雷達圓切換鈕（開啟後 Run 改查此範圍）
@@ -244,7 +245,7 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
       pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
     }
 
-    const popup = tagsPopup(tags);
+    const popup = tagsPopup(tags, featureName(tags));
     const base = markers.length;
     for (const p of pts) {
       const m = L.marker(p, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
@@ -283,12 +284,99 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
   return { count, perCategory, items };
 }
 
-/** 把 tags 組成彈窗表格 HTML（無 tags 回空字串）。 */
-function tagsPopup(tags: Record<string, unknown>): string {
+/**
+ * 把 tags 組成彈窗 HTML（最上方一顆複製鈕＋tags 表格）。
+ * 複製鈕的 data-addr 帶該地點地址（無地址時為空字串，由 initPopupCopy 退回複製座標）。
+ * 無 tags 仍回空字串（沒有彈窗）。
+ */
+function tagsPopup(tags: Record<string, unknown>, name: string): string {
   const rows = Object.entries(tags)
     .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
     .join("");
-  return rows ? `<table class="tags">${rows}</table>` : "";
+  if (!rows) return "";
+  const addr = buildAddress(tags, name);
+  const btn =
+    `<button type="button" class="popup-copy" data-addr="${escapeHtml(addr)}">` +
+    `📋 ${addr ? "複製地址" : "複製座標"}</button>`;
+  return `${btn}<table class="tags">${rows}</table>`;
+}
+
+/**
+ * 從 OSM addr:* tags 組出一行地址；有 addr:full 直接用，否則由各欄位拼接。
+ * 完全沒有地址資訊時回空字串（呼叫端會改複製經緯度）。
+ */
+function buildAddress(tags: Record<string, unknown>, name: string): string {
+  const t = (k: string): string => {
+    const v = tags[k];
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const full = t("addr:full");
+  if (full) return full;
+
+  // 由大到小拼，缺的略過；門牌與街道合併成一段
+  const street = [t("addr:street"), t("addr:housenumber")].filter(Boolean).join(" ");
+  const parts = [
+    t("addr:postcode"),
+    t("addr:state") || t("addr:province"),
+    t("addr:city") || t("addr:town") || t("addr:village"),
+    t("addr:district") || t("addr:suburb") || t("addr:quarter"),
+    street,
+  ].filter(Boolean);
+  if (parts.length === 0) return "";
+  return [name, ...parts].filter(Boolean).join(" ");
+}
+
+/** 彈窗開啟時綁定「複製」鈕：有地址複製地址，沒有就複製該標記的經緯度。 */
+function initPopupCopy(map: L.Map): void {
+  map.on("popupopen", (e: L.PopupEvent) => {
+    const root = e.popup.getElement();
+    const btn = root?.querySelector<HTMLButtonElement>(".popup-copy");
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+
+    btn.addEventListener("click", async () => {
+      let text = btn.dataset.addr ?? "";
+      if (!text) {
+        const ll = e.popup.getLatLng();
+        if (ll) text = `${ll.lat.toFixed(6)}, ${ll.lng.toFixed(6)}`;
+      }
+      if (!text) return;
+
+      const ok = await copyText(text);
+      const label = btn.textContent;
+      btn.textContent = ok ? "✓ 已複製" : "✗ 複製失敗";
+      btn.classList.toggle("copied", ok);
+      setTimeout(() => {
+        btn.textContent = label;
+        btn.classList.remove("copied");
+      }, 1200);
+    });
+  });
+}
+
+/** 複製文字到剪貼簿；Clipboard API 不可用時退回 execCommand。 */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 失敗就走 fallback
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 /** 產生顯示 emoji 的地圖標記圖示（圓底、分類色外框）。 */
