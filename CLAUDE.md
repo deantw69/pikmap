@@ -43,7 +43,7 @@ pnpm preview    # 預覽正式版
 
 - **狀態持久化**：`storage.ts` 以 `pikmap.` 前綴存 localStorage，全包 try/catch（無痕模式安全）。記住地圖視野（`view`）與選單勾選（`selected`），下次開啟還原。
 
-- **結果彈窗複製鈕**：`map.ts` 的 `tagsPopup` 在 tags 表格上方放一顆 `.popup-copy` 鈕，`data-addr` 帶 `buildAddress()` 由 `addr:*` 組出的地址；`initPopupCopy`（initMap 掛載）在 `popupopen` 綁定點擊，有地址複製地址、無地址退回複製該標記經緯度（`copyText` 走 Clipboard API，失敗退回 `execCommand`）。
+- **結果彈窗**：`map.ts` 的 `tagsPopup` 只顯示精簡欄位──`name`（無則 `name:zh`）、命中分類所依據的標籤（如 `amenity=pharmacy`，由 `matchedTypeTags()` 取該 feature 第一個完全相符的 filter 條件）、`addr:full`，三者皆無則不顯示彈窗。表格上方放一顆 `.popup-copy` 鈕，`data-addr` 帶 `buildAddress()` 由 `addr:*` 組出的地址；`initPopupCopy`（initMap 掛載）在 `popupopen` 綁定點擊，有地址複製地址、無地址退回複製該標記經緯度（`copyText` 走 Clipboard API，失敗退回 `execCommand`）。
 
 - **地圖疊加層**（除 `saved.ts` 外皆在 `map.ts` initMap 時掛載）：
   - `help.ts` — 右上角最上方「？」功能說明鈕；點開浮出 modal，逐項說明右側各功能按鈕。內容由模組頂部的 `FEATURES` 陣列驅動，**新增功能時在此陣列加一筆即可**（icon 直接複製對應按鈕的 SVG / emoji）。

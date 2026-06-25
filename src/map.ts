@@ -245,7 +245,8 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
       pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
     }
 
-    const popup = tagsPopup(tags, featureName(tags));
+    const typeTags = idx >= 0 ? matchedTypeTags(tags, parsed[idx].filters) : [];
+    const popup = tagsPopup(tags, featureName(tags), typeTags);
     const base = markers.length;
     for (const p of pts) {
       const m = L.marker(p, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
@@ -289,10 +290,38 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
  * 複製鈕的 data-addr 帶該地點地址（無地址時為空字串，由 initPopupCopy 退回複製座標）。
  * 無 tags 仍回空字串（沒有彈窗）。
  */
-function tagsPopup(tags: Record<string, unknown>, name: string): string {
-  const rows = Object.entries(tags)
-    .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`)
-    .join("");
+/**
+ * 該 feature 命中分類所依據的標籤 key=value（取第一個完全相符的 filter 的所有條件）。
+ * 例如藥局命中 ["amenity"="pharmacy"] → 回 [["amenity","pharmacy"]]。
+ */
+function matchedTypeTags(tags: Record<string, unknown>, filters: FilterConds[]): [string, string][] {
+  for (const conds of filters) {
+    if (conds.every(([k, v]) => {
+      const tag = tags[k];
+      if (tag === undefined || tag === null) return false;
+      const s = String(tag);
+      return s === v || s.split(";").includes(v);
+    })) return conds;
+  }
+  return [];
+}
+
+function tagsPopup(
+  tags: Record<string, unknown>,
+  name: string,
+  typeTags: [string, string][],
+): string {
+  const t = (k: string): string => {
+    const v = tags[k];
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const displayName = t("name") || t("name:zh");
+  const fullAddr = t("addr:full");
+  const rows = [
+    displayName ? `<tr><td>name</td><td>${escapeHtml(displayName)}</td></tr>` : "",
+    ...typeTags.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`),
+    fullAddr ? `<tr><td>addr:full</td><td>${escapeHtml(fullAddr)}</td></tr>` : "",
+  ].join("");
   if (!rows) return "";
   const addr = buildAddress(tags, name);
   const btn =
