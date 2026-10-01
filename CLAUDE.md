@@ -48,7 +48,7 @@ pnpm preview    # 預覽正式版
 - **地圖疊加層**（除 `saved.ts` 外皆在 `map.ts` initMap 時掛載）：
   - `help.ts` — 右上角最上方「？」功能說明鈕；點開浮出 modal，逐項說明右側各功能按鈕。內容由模組頂部的 `FEATURES` 陣列驅動，**新增功能時在此陣列加一筆即可**（icon 直接複製對應按鈕的 SVG / emoji）。
   - `search.ts` — 左上角地址搜尋，用 Nominatim 地理編碼，含 debounce + 序號（`seq`）丟棄過期結果的自動完成下拉。
-  - `grid.ts` — 右上角即時 zoom level；zoom ≥ 17 時用 BFS 從中心 cell 擴張畫出 S2 level-17 網格（Pokémon GO / Pikmin Bloom 慣用），上限 `MAX_CELLS` 避免暴衝。
+  - `grid.ts` — 右上角即時 zoom level；zoom ≥ 17 時用 BFS 從中心 cell 擴張畫出 S2 level-17 網格（Pokémon GO / Pikmin Bloom 慣用），上限 `MAX_CELLS` 避免暴衝。網格可見時長按（Leaflet `contextmenu`，桌機為右鍵）格子切換「已拿過」灰色填滿，以 `toHilbertQuadkey()` 為 key 存 localStorage `collectedCells`；有標記時網格控制鈕會出現「全部清除」鈕（附 confirm）。
   - `measure.ts` — 右上角「量距離」切換鈕（群聚鈕下方）；開啟後逐點點按連成折線、各頂點顯示累計距離，雙擊或 Esc 結束該段，再按一次清除關閉。
   - `circle.ts` — 右上角可拖曳的 100m 範圍圓切換鈕；會 `clampIntoView` 夾在畫面內。
   - `radar.ts` — 右上角可拖曳的 10km 雷達圓切換鈕（藍色，100m 圓鈕下方）；**不夾限視野、可超出畫面**。開啟時 `getRadarScope()` 回傳圓心與半徑，`main.ts` 的 Run 改用此圓範圍查詢（見下方 `around` 範圍）；關閉則恢復用畫面視野。

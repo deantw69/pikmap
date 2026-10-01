@@ -1004,6 +1004,39 @@ body.pure-mode #pure-controls {
   color: var(--brand);
 }
 
+/* 清除「已拿過」格子鈕（只在網格可見且有標記時出現） */
+.collected-clear {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #9aa3a0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.collected-clear[hidden] {
+  display: none;
+}
+
+.collected-clear svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.collected-clear:hover {
+  background: #f0f4f2;
+}
+
+/* 長按格子標記「已拿過」時，避免 iOS 跳出長按選單 */
+.leaflet-container {
+  -webkit-touch-callout: none;
+}
+
 /* 測量中：地圖游標改成十字 */
 .leaflet-container.measuring {
   cursor: crosshair;

@@ -70,6 +70,15 @@ const FEATURES: Feature[] = [
     name: "縮放等級 / S2 網格",
     desc: "右上角顯示目前地圖縮放等級。放大到 Lv.17 以上時，會疊上 S2 level-17 網格。",
   },
+  {
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+        <path d="M3 3h11v11H3z" fill="currentColor" fill-opacity="0.35"/>
+        <path d="M14.5 14.5l6 6M20.5 14.5l-6 6" stroke-linecap="round"/>
+      </g></svg>`,
+    name: "已拿過格子",
+    desc: "網格顯示時，長按（電腦按右鍵）格子可標記為「已拿過」（灰色），再長按一次取消；有標記時會出現此鈕，可一鍵全部清除。",
+  },
 ];
 
 export function initHelp(map: L.Map): void {
