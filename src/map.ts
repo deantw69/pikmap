@@ -29,6 +29,9 @@ let clusterGroup: L.MarkerClusterGroup | null = null; // 群聚開啟時的點�
 let plainGroup: L.LayerGroup | null = null; // 群聚關閉時的點狀結果容器
 let areaLayer: L.FeatureGroup | null = null; // 面／線狀結果的外框
 let markers: L.Marker[] = []; // 目前結果的 emoji 標記（依索引對應結果清單）
+let markerFid: number[] = []; // 與 markers 平行：每個標記屬於第幾個 feature
+let featureLayers: { markers: L.Marker[]; shape?: L.Layer }[] = []; // 依 feature 索引：其標記與外框
+const hiddenFeatures = new Set<number>(); // 本次查詢中被標成「已看過」而隱藏的 feature（重新查詢即清空）
 let clusterEnabled = load<boolean>("cluster", true); // 是否群聚顯示（使用者可切換、會記住）
 
 /** 初始化 Leaflet 地圖並加上 OSM 底圖。 */
@@ -48,7 +51,7 @@ export function initMap(el: HTMLElement): L.Map {
 
   initSearch(map); // 左上角地址搜尋框
   initHelp(map); // 右上角「？」功能說明
-  initPopupCopy(map); // 彈窗內「複製地址／座標」鈕
+  initPopupActions(map); // 彈窗內「複製地址／座標」與「已看過」鈕
   initZoomDisplay(map); // 右上角 zoom level
   initRangeCircle(map); // zoom 顯示下方：可拖曳的 100m 範圍圓切換鈕
   initRadar(map); // 100m 圓下方：可拖曳的 10km 雷達圓切換鈕（開啟後 Run 改查此範圍）
@@ -97,6 +100,7 @@ export function distanceMeters(a: L.LatLngExpression, b: L.LatLngExpression): nu
 export function focusResult(index: number): void {
   const marker = markers[index];
   if (!marker) return;
+  if (hiddenFeatures.has(markerFid[index])) unhideFeature(markerFid[index]); // 從清單點已隱藏的項目 → 重新顯示
   if (clusterEnabled && clusterGroup) {
     clusterGroup.zoomToShowLayer(marker, () => marker.openPopup());
   } else {
@@ -140,14 +144,35 @@ function renderMarkers(): void {
   plainGroup?.remove();
   plainGroup = null;
 
+  const visible = markers.filter((_, i) => !hiddenFeatures.has(markerFid[i]));
   if (clusterEnabled) {
     clusterGroup = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50 });
-    clusterGroup.addLayers(markers);
+    clusterGroup.addLayers(visible);
     clusterGroup.addTo(map);
   } else {
-    plainGroup = L.layerGroup(markers);
+    plainGroup = L.layerGroup(visible);
     plainGroup.addTo(map);
   }
+}
+
+/** 把某 feature 標成「已看過」：從地圖拿掉它的標記與外框（只在本次查詢有效）。 */
+function hideFeature(fid: number): void {
+  const f = featureLayers[fid];
+  if (!f || hiddenFeatures.has(fid)) return;
+  hiddenFeatures.add(fid);
+  map.closePopup();
+  if (clusterGroup) clusterGroup.removeLayers(f.markers);
+  for (const m of f.markers) plainGroup?.removeLayer(m);
+  if (f.shape) areaLayer?.removeLayer(f.shape);
+}
+
+/** 取消隱藏某 feature，把標記與外框放回地圖。 */
+function unhideFeature(fid: number): void {
+  const f = featureLayers[fid];
+  if (!f || !hiddenFeatures.delete(fid)) return;
+  if (clusterGroup) clusterGroup.addLayers(f.markers);
+  for (const m of f.markers) plainGroup?.addLayer(m);
+  if (f.shape) areaLayer?.addLayer(f.shape);
 }
 
 /** 一個被選取、且已配好顏色的分類 */
@@ -194,6 +219,9 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
   plainGroup = null;
   areaLayer?.remove();
   markers = [];
+  markerFid = [];
+  featureLayers = [];
+  hiddenFeatures.clear();
 
   const useColors = styled.length >= 2;
   const parsed: ParsedCategory[] = styled.map((s) => ({
@@ -229,6 +257,7 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
 
     // 標記位置：點→自身；面→範圍中心；線→經過的每個 S2 網格各放一個（細長河流沿線分佈）
     let pts: L.LatLng[];
+    let shapeLayer: L.Layer | undefined;
     const geom = feature.geometry;
     if (geom && geom.type === "Point") {
       const [lng, lat] = geom.coordinates;
@@ -240,20 +269,26 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
       if (isLine && tags["waterway"] === "river") continue;
       const shape = L.geoJSON(feature, { style: { color, weight: 2, fillOpacity: 0.2 } });
       shape.addTo(areaLayer);
+      shapeLayer = shape;
       // 面（河面／湖沼）沿「岸邊」放 icon、線（河道）沿線放 icon。
       const cellPts = edgeCellPoints(geom, S2_GRID_LEVEL, polyRings);
       pts = cellPts.length ? cellPts : [shape.getBounds().getCenter()];
     }
 
     const typeTags = idx >= 0 ? matchedTypeTags(tags, parsed[idx].filters) : [];
-    const popup = tagsPopup(tags, featureName(tags), typeTags);
+    const fid = featureLayers.length;
+    const popup = tagsPopup(tags, featureName(tags), typeTags, fid);
     const base = markers.length;
+    const fMarkers: L.Marker[] = [];
     for (const p of pts) {
       const m = L.marker(p, { icon: emojiIcon(cat?.emoji ?? "📍", color) });
-      if (popup) m.bindPopup(popup);
+      m.bindPopup(popup);
       bounds.extend(p);
       markers.push(m);
+      markerFid.push(fid);
+      fMarkers.push(m);
     }
+    featureLayers.push({ markers: fMarkers, shape: shapeLayer });
 
     // 清單只放一筆，代表座標取中間那個標記（點擊聚焦用）
     const repIdx = Math.floor(pts.length / 2);
@@ -286,9 +321,9 @@ export function showResult(geojson: FeatureCollection, styled: StyledCategory[] 
 }
 
 /**
- * 把 tags 組成彈窗 HTML（最上方一顆複製鈕＋tags 表格）。
- * 複製鈕的 data-addr 帶該地點地址（無地址時為空字串，由 initPopupCopy 退回複製座標）。
- * 無 tags 仍回空字串（沒有彈窗）。
+ * 把 tags 組成彈窗 HTML（最上方「複製」與「已看過」兩顆鈕＋tags 表格）。
+ * 複製鈕的 data-addr 帶該地點地址（無地址時為空字串，由 initPopupActions 退回複製座標）；
+ * 已看過鈕的 data-fid 帶 feature 索引。沒有可顯示的 tags 時只放按鈕、不放表格。
  */
 /**
  * 該 feature 命中分類所依據的標籤 key=value（取第一個完全相符的 filter 的所有條件）。
@@ -310,6 +345,7 @@ function tagsPopup(
   tags: Record<string, unknown>,
   name: string,
   typeTags: [string, string][],
+  fid: number,
 ): string {
   const t = (k: string): string => {
     const v = tags[k];
@@ -322,12 +358,12 @@ function tagsPopup(
     ...typeTags.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`),
     fullAddr ? `<tr><td>addr:full</td><td>${escapeHtml(fullAddr)}</td></tr>` : "",
   ].join("");
-  if (!rows) return "";
   const addr = buildAddress(tags, name);
-  const btn =
+  const btns =
     `<button type="button" class="popup-copy" data-addr="${escapeHtml(addr)}">` +
-    `📋 ${addr ? "複製地址" : "複製座標"}</button>`;
-  return `${btn}<table class="tags">${rows}</table>`;
+    `📋 ${addr ? "複製地址" : "複製座標"}</button>` +
+    `<button type="button" class="popup-hide" data-fid="${fid}" title="本次查詢先隱藏，重新查詢會再出現">👁 已看過</button>`;
+  return rows ? `${btns}<table class="tags">${rows}</table>` : btns;
 }
 
 /**
@@ -355,10 +391,18 @@ function buildAddress(tags: Record<string, unknown>, name: string): string {
   return [name, ...parts].filter(Boolean).join(" ");
 }
 
-/** 彈窗開啟時綁定「複製」鈕：有地址複製地址，沒有就複製該標記的經緯度。 */
-function initPopupCopy(map: L.Map): void {
+/**
+ * 彈窗開啟時綁定按鈕：「複製」有地址複製地址，沒有就複製該標記的經緯度；
+ * 「已看過」把該地點在本次查詢中隱藏。
+ */
+function initPopupActions(map: L.Map): void {
   map.on("popupopen", (e: L.PopupEvent) => {
     const root = e.popup.getElement();
+    const hideBtn = root?.querySelector<HTMLButtonElement>(".popup-hide");
+    if (hideBtn && !hideBtn.dataset.bound) {
+      hideBtn.dataset.bound = "1";
+      hideBtn.addEventListener("click", () => hideFeature(Number(hideBtn.dataset.fid)));
+    }
     const btn = root?.querySelector<HTMLButtonElement>(".popup-copy");
     if (!btn || btn.dataset.bound) return;
     btn.dataset.bound = "1";

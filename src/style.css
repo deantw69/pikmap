@@ -1403,7 +1403,8 @@ body.pure-mode #pure-controls {
 }
 
 /* 彈窗內「複製地址／座標」鈕 */
-.popup-copy {
+.popup-copy,
+.popup-hide {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1418,7 +1419,13 @@ body.pure-mode #pure-controls {
   cursor: pointer;
 }
 
-.popup-copy:hover {
+.popup-hide {
+  margin-left: 6px;
+  color: #6b7570;
+}
+
+.popup-copy:hover,
+.popup-hide:hover {
   background: #e6efe9;
 }
 
